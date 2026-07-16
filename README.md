@@ -12,6 +12,7 @@ Invoke-FileNameTransformation is a GUI-based PowerShell utility for advanced fil
 - **Saveable Profiles**: Export and reload complex configurations as JSON profiles.
 - **Multi-language Interface**: Built-in support for Polish, English, and German.
 - **Copy or Move Execution**: Run the transformation in copy or move mode and keep an audit log.
+- **Folder Layout Control**: Scan source subfolders independently from preserving their layout in the destination folder.
 
 ## Requirements
 
@@ -34,7 +35,7 @@ powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
 
 ## Typical Workflow
 
-1. **Select folders**: Choose the source folder and output destination.
+1. **Select folders**: Choose the source folder and output destination. Enable **Scan subfolders** to include nested files. Use **Preserve folder structure in destination folder** to recreate the source hierarchy at the destination, or clear it to copy or move all results directly into the selected destination folder.
 2. **Analyze names**: Review the detected filename structures and choose a pattern.
 3. **Define fields and mappings**: Create fields, apply transforms, and load CSV lookup files.
 4. **Build the output name**: Assemble the target filename from fields, text, and separators.
@@ -44,3 +45,4 @@ powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
 
 - Profiles, logs, and the language configuration are stored under the user's AppData folder.
 - If AppData is unavailable, the script falls back to the script directory or a temporary folder.
+- Preserving the folder structure is enabled by default. When it is disabled, files from different subfolders can produce duplicate destination names; the preview flags those collisions before execution.
