@@ -182,6 +182,7 @@ $script:Translations = @{
         'Type_Date_5'            = 'Data (MM-yyyy)'
         'Type_Date_6'            = 'Data (YYMMDD lub DDMMYY)'
         'Type_Date_7'            = 'Data (MM-DD lub DD-MM)'
+        'Type_Date_8'            = 'Data (YYYY-MM-DDTHH:MM:SS lub YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Liczba'
         'Type_Text'              = 'Tekst'
         'Hint_SelectField'       = 'Wybierz pole, nadaj mu nazwę biznesową i dodaj transformacje lub mapowania.'
@@ -405,6 +406,7 @@ $script:Translations = @{
         'Type_Date_5'            = 'Date (MM-yyyy)'
         'Type_Date_6'            = 'Date (YYMMDD or DDMMYY)'
         'Type_Date_7'            = 'Date (MM-DD or DD-MM)'
+        'Type_Date_8'            = 'Date (YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Number'
         'Type_Text'              = 'Text'
         'Hint_SelectField'       = 'Select a field, give it a business name, and add transformations or mappings.'
@@ -624,6 +626,7 @@ $script:Translations = @{
         'Type_Date_5'            = 'Datum (MM-yyyy)'
         'Type_Date_6'            = 'Datum (YYMMDD oder DDMMYY)'
         'Type_Date_7'            = 'Datum (MM-DD oder DD-MM)'
+        'Type_Date_8'            = 'Datum (YYYY-MM-DDTHH:MM:SS oder YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Zahl'
         'Type_Text'              = 'Text'
         'Hint_SelectField'       = 'Wählen Sie ein Feld aus, geben Sie ihm einen Geschäftsnamen und fügen Sie Transformationen oder Zuordnungen hinzu.'
@@ -1209,6 +1212,7 @@ function TokenType([string]$v) {
     if ($v -match '^\d{2}[-_.]\d{4}$') { return (T 'Type_Date_5') } #date in MM-YYYY format`
     if ($v -match '^\d{6}$') { return (T 'Type_Date_6') } #date in YYMMDD or DDMMYY format
     if ($v -match '^\d{2}[-_.]\d{2}$') { return (T 'Type_Date_7') } #date in MM-DD or DD-MM format
+    if ($v -match '^\d{4}[-_.]\d{2}[-_.]\d{2}[Tt]\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?$') { return (T 'Type_Date_8') } #YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SSZ format
     if ($v -match '^\d+$') { return (T 'Type_Num') }
     return (T 'Type_Text')
 }
