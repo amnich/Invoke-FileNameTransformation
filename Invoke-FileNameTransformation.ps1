@@ -13,11 +13,16 @@
     Tokenizer regex: the expression must match every filename segment. Use the named group
     (?<sep>...) for literal separators; all other matches are treated as value fields. The default
     (?<value>[^_\-\s]+)|(?<sep>[_\-\s]+) splits values on underscores, hyphens, and whitespace.
+    A second semantic pass recognizes integers, invariant decimals, exact dates/times, GUIDs,
+    versions, and configured custom regex types. Recognized composite values can span lexical
+    separators. Ambiguous values retain all candidates and require a field type selection.
 
     Features:
     - Multi-language UI (Polish, English, German).
     - Saveable and reusable profiles in JSON format.
     - Pattern-based source file parsing.
+    - Typed field inference with explicit ambiguity resolution.
+    - Strict structural matching when applying a selected pattern to other files.
     - External CSV-based mapping support.
     - Preview and validation for collisions, missing values, and invalid characters.
     - Copy or move execution mode with audit logging.
@@ -32,7 +37,8 @@
     Starts the script in a single-threaded apartment (required for WPF).
 
 .NOTES
-    Requires Windows PowerShell 5.1 and an STA host. Profiles, logs, and the language configuration are stored
+    Requires Windows PowerShell 5.1, an STA host, and FileNameTransformation.Core.psm1 beside the script or executable.
+    Profiles, logs, and the language configuration are stored
     under the current user's AppData folder, with fallback to the script directory or temporary folder when needed.
     When subfolder scanning is enabled, destination folder preservation is controlled separately and is enabled by default.
 #>
@@ -72,21 +78,20 @@ if (Test-Path $script:ConfigPath) {
     try {
         Write-Verbose $script:ConfigPath
         $config = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        $script:Config = $config
-        if (-not $script:Config.PSObject.Properties['Version']) {
-            $script:Config | Add-Member -NotePropertyName Version -NotePropertyValue 1
-        }
-        if (-not $script:Config.PSObject.Properties['CustomTypeRules']) {
-            $script:Config | Add-Member -NotePropertyName CustomTypeRules -NotePropertyValue @()
-        }
-        if ($config.Language -in @('PL', 'EN', 'DE')) {
-            $script:CurrentLanguage = $config.Language
+        $script:Config = ConvertTo-FNTConfig $config
+        if ($script:Config.Language -in @('PL', 'EN', 'DE')) {
+            $script:CurrentLanguage = $script:Config.Language
             Write-Information "Using saved language: $script:CurrentLanguage"
         }
     }
     catch {
         Write-Error 'Failed to load config file!'
     }
+}
+$customRuleValidation = Test-FNTCustomTypeRules @($script:Config.CustomTypeRules)
+$script:CustomTypeRules = @($customRuleValidation.ValidRules)
+foreach ($ruleError in @($customRuleValidation.Errors)) {
+    Write-Warning "Custom type rule skipped: $($ruleError.Message)"
 }
 
 $script:Translations = @{
@@ -211,6 +216,20 @@ $script:Translations = @{
         'Type_Auto'              = 'Automatyczny'
         'Txt_DataType'           = 'Typ danych:'
         'Err_ResolveAmbiguous'    = 'Wybierz jednoznaczny typ danych dla pola:'
+        'FieldStatus_Detected'    = 'Wykryty'
+        'FieldStatus_Choice'      = 'Wymaga wyboru'
+        'FieldStatus_Resolved'    = 'Rozstrzygnięty'
+        'Txt_Candidates'          = 'Kandydaci:'
+        'Diag_InvalidRegex'       = 'Nieprawidłowy regex tokenizera: {0}'
+        'Diag_MissingSepGroup'    = "Regex tokenizera musi definiować nazwaną grupę 'sep'."
+        'Diag_ZeroLength'         = 'Regex tokenizera zwrócił dopasowanie zerowej długości na pozycji {0}.'
+        'Diag_IncompleteCoverage' = 'Regex tokenizera nie dopasował nazwy pliku na pozycji {0}.'
+        'Diag_TokenCount'         = "Niezgodność wzorca dla '{0}': oczekiwano {1} tokenów, znaleziono {2}."
+        'Diag_TokenKind'          = "Niezgodność wzorca dla '{0}', token {1}, pozycja {2}: oczekiwano {3}, znaleziono {4} '{5}'."
+        'Diag_Separator'          = "Niezgodność wzorca dla '{0}', token {1}, pozycja {2}: oczekiwano separatora '{3}', znaleziono '{4}'."
+        'Diag_Type'               = "Niezgodność wzorca dla '{0}', token {1}, pozycja {2}: wartość '{3}' nie ma typu '{4}'{5}."
+        'Diag_KindSeparator'      = 'separatora'
+        'Diag_KindValue'          = 'wartości'
         'Hint_SelectField'       = 'Wybierz pole, nadaj mu nazwę biznesową i dodaj transformacje lub mapowania.'
         'Hint_AddElements'       = 'Dodaj elementy nazwy docelowej za pomocą przycisków poniżej.'
         'Prefix_Source'          = 'Źródło'
@@ -444,6 +463,20 @@ $script:Translations = @{
         'Type_Auto'              = 'Auto'
         'Txt_DataType'           = 'Data type:'
         'Err_ResolveAmbiguous'    = 'Select an unambiguous data type for field:'
+        'FieldStatus_Detected'    = 'Detected'
+        'FieldStatus_Choice'      = 'Choice required'
+        'FieldStatus_Resolved'    = 'Resolved'
+        'Txt_Candidates'          = 'Candidates:'
+        'Diag_InvalidRegex'       = 'Invalid tokenizer regex: {0}'
+        'Diag_MissingSepGroup'    = "Tokenizer regex must define the named group 'sep'."
+        'Diag_ZeroLength'         = 'Tokenizer regex produced a zero-length match at position {0}.'
+        'Diag_IncompleteCoverage' = 'Tokenizer regex did not match the filename at position {0}.'
+        'Diag_TokenCount'         = "Pattern mismatch for '{0}': expected {1} tokens, found {2}."
+        'Diag_TokenKind'          = "Pattern mismatch for '{0}', token {1}, offset {2}: expected {3}, found {4} '{5}'."
+        'Diag_Separator'          = "Pattern mismatch for '{0}', token {1}, offset {2}: expected separator '{3}', found '{4}'."
+        'Diag_Type'               = "Pattern mismatch for '{0}', token {1}, offset {2}: value '{3}' is not type '{4}'{5}."
+        'Diag_KindSeparator'      = 'separator'
+        'Diag_KindValue'          = 'value'
         'Hint_SelectField'       = 'Select a field, give it a business name, and add transformations or mappings.'
         'Hint_AddElements'       = 'Add destination name elements using buttons below.'
         'Prefix_Source'          = 'Source'
@@ -673,6 +706,20 @@ $script:Translations = @{
         'Type_Auto'              = 'Automatisch'
         'Txt_DataType'           = 'Datentyp:'
         'Err_ResolveAmbiguous'    = 'Wählen Sie einen eindeutigen Datentyp für das Feld:'
+        'FieldStatus_Detected'    = 'Erkannt'
+        'FieldStatus_Choice'      = 'Auswahl erforderlich'
+        'FieldStatus_Resolved'    = 'Aufgelöst'
+        'Txt_Candidates'          = 'Kandidaten:'
+        'Diag_InvalidRegex'       = 'Ungültiger Tokenizer-Regex: {0}'
+        'Diag_MissingSepGroup'    = "Der Tokenizer-Regex muss die benannte Gruppe 'sep' definieren."
+        'Diag_ZeroLength'         = 'Der Tokenizer-Regex erzeugte an Position {0} einen Treffer der Länge null.'
+        'Diag_IncompleteCoverage' = 'Der Tokenizer-Regex konnte den Dateinamen an Position {0} nicht zuordnen.'
+        'Diag_TokenCount'         = "Musterabweichung für '{0}': {1} Token erwartet, {2} gefunden."
+        'Diag_TokenKind'          = "Musterabweichung für '{0}', Token {1}, Position {2}: {3} erwartet, {4} '{5}' gefunden."
+        'Diag_Separator'          = "Musterabweichung für '{0}', Token {1}, Position {2}: Trennzeichen '{3}' erwartet, '{4}' gefunden."
+        'Diag_Type'               = "Musterabweichung für '{0}', Token {1}, Position {2}: Wert '{3}' entspricht nicht dem Typ '{4}'{5}."
+        'Diag_KindSeparator'      = 'Trennzeichen'
+        'Diag_KindValue'          = 'Wert'
         'Hint_SelectField'       = 'Wählen Sie ein Feld aus, geben Sie ihm einen Geschäftsnamen und fügen Sie Transformationen oder Zuordnungen hinzu.'
         'Hint_AddElements'       = 'Fügen Sie Zielnamenselemente mit den Schaltflächen unten hinzu.'
         'Prefix_Source'          = 'Quelle'
@@ -988,6 +1035,7 @@ $xamlTemplate = @'
                     <DataGridTextColumn Header="#"        Binding="{Binding DisplayIndex}" Width="30"/>
                     <DataGridTextColumn Header="{t:Col_Sample}" Binding="{Binding Sample}"       Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Type}"      Binding="{Binding EffectiveType}" Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Status}" Binding="{Binding TypeStatus}" Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Name}"    Binding="{Binding Name}"         Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Role}"     Binding="{Binding Role}"         Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Source}"   Binding="{Binding Source}"       Width="72"/>
@@ -1012,6 +1060,8 @@ $xamlTemplate = @'
                   </ComboBox>
                                     <TextBlock Text="{t:Txt_DataType}" Margin="0,4,0,2"/>
                                     <ComboBox x:Name="FieldType" DisplayMemberPath="Label"/>
+                                      <TextBlock Text="{t:Txt_Candidates}" Margin="0,4,0,2"/>
+                                      <TextBlock x:Name="CandidateInfo" Margin="4,0,4,4" Foreground="#52606D" TextWrapping="Wrap"/>
                   <Button x:Name="FieldApply" Content="{t:Btn_ApplyField}" Margin="4,6,4,4"/>
 
                   <Separator Margin="4,8"/>
@@ -1199,11 +1249,53 @@ function SetStatus([string]$message) {
     Log $message
 }
 
+function GetLocalizedErrorMessage([Exception]$exception) {
+    if ($null -eq $exception -or -not $exception.Data.Contains('FNTCode')) {
+        return $exception.Message
+    }
+
+    $kindLabel = {
+        param($kind)
+        if ($kind -eq 'separator') { return (T 'Diag_KindSeparator') }
+        return (T 'Diag_KindValue')
+    }
+    switch ([string]$exception.Data['FNTCode']) {
+        'Tokenizer.InvalidRegex' {
+            return ((T 'Diag_InvalidRegex') -f $exception.Data['Reason'])
+        }
+        'Tokenizer.MissingSeparatorGroup' { return (T 'Diag_MissingSepGroup') }
+        'Tokenizer.ZeroLength' {
+            return ((T 'Diag_ZeroLength') -f $exception.Data['Position'])
+        }
+        'Tokenizer.IncompleteCoverage' {
+            return ((T 'Diag_IncompleteCoverage') -f $exception.Data['Position'])
+        }
+        'Pattern.TokenCount' {
+            return ((T 'Diag_TokenCount') -f $exception.Data['Name'], $exception.Data['Expected'], $exception.Data['Actual'])
+        }
+        'Pattern.TokenKind' {
+            return ((T 'Diag_TokenKind') -f $exception.Data['Name'], $exception.Data['Token'], $exception.Data['Offset'],
+                (& $kindLabel $exception.Data['Expected']), (& $kindLabel $exception.Data['Actual']), $exception.Data['Value'])
+        }
+        'Pattern.Separator' {
+            return ((T 'Diag_Separator') -f $exception.Data['Name'], $exception.Data['Token'], $exception.Data['Offset'],
+                $exception.Data['Expected'], $exception.Data['Actual'])
+        }
+        'Pattern.Type' {
+            $formatText = if ($exception.Data['Format']) { " ($($exception.Data['Format']))" } else { '' }
+            return ((T 'Diag_Type') -f $exception.Data['Name'], $exception.Data['Token'], $exception.Data['Offset'],
+                $exception.Data['Value'], $exception.Data['TypeId'], $formatText)
+        }
+        default { return $exception.Message }
+    }
+}
+
 function ErrorBox([string]$title, $err) {
-    $msg = "Komunikat: $($err.Exception.Message)"
+    $localizedMessage = GetLocalizedErrorMessage $err.Exception
+    $msg = "Komunikat: $localizedMessage"
     $msg += "`nLinia:     $($err.InvocationInfo.ScriptLineNumber)"
     $msg += "`nLog:       $script:LogPath"
-    Log "$title | $($err.Exception.Message)" 'ERROR'
+    Log "$title | $localizedMessage" 'ERROR'
     [Windows.MessageBox]::Show($msg, $title, 'OK', 'Error') | Out-Null
 }
 
@@ -1239,7 +1331,7 @@ function UpdateUI {
 
 function Tokens([string]$name) {
     $pattern = if ($TokenRegex -and $TokenRegex.Text) { $TokenRegex.Text } else { '(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)' }
-    Get-FNTTokens -Name $name -Pattern $pattern -CustomTypeRules @($script:Config.CustomTypeRules)
+    Get-FNTTokens -Name $name -Pattern $pattern -CustomTypeRules @($script:CustomTypeRules)
 }
 
 function TokenTypeLabel([string]$typeId) {
@@ -1252,17 +1344,6 @@ function TokenTypeLabel([string]$typeId) {
         'Ambiguous' { return (T 'Type_Ambiguous') }
         default { return (T 'Type_Text') }
     }
-}
-
-function ConvertLegacyTypeId([string]$typeLabel) {
-    if ([string]::IsNullOrWhiteSpace($typeLabel)) { return 'Text' }
-    if ($typeLabel -match 'Ambig|Niejedno|Mehrdeu') { return 'Ambiguous' }
-    if ($typeLabel -match 'GUID') { return 'Guid' }
-    if ($typeLabel -match 'Version|Wersja') { return 'Version' }
-    if ($typeLabel -match 'Decimal|dzies|Dezimal') { return 'Decimal' }
-    if ($typeLabel -match 'Date|Data|Datum') { return 'DateTime' }
-    if ($typeLabel -match 'Number|Liczba|Zahl') { return 'Integer' }
-    return 'Text'
 }
 
 function GetFieldTypeOptions($field) {
@@ -1281,10 +1362,19 @@ function GetFieldTypeOptions($field) {
             $options += [pscustomobject]@{ Id = 'DateTime'; Format = [string]$candidate.Format; Label = $label }
         }
         elseif ([string]$candidate.TypeId -like 'Custom:*') {
+            $customLabel = if ($candidate.PSObject.Properties['DisplayName'] -and $candidate.DisplayName) {
+                [string]$candidate.DisplayName
+            }
+            elseif ($candidate.PSObject.Properties['RuleId'] -and $candidate.RuleId) {
+                [string]$candidate.RuleId
+            }
+            else {
+                [string]$candidate.TypeId
+            }
             $options += [pscustomobject]@{
                 Id     = [string]$candidate.TypeId
                 Format = $null
-                Label  = [string]$candidate.TypeId
+                Label  = $customLabel
             }
         }
     }
@@ -1309,6 +1399,30 @@ function GetEffectiveTypeLabel($field) {
         return [string]$field.SelectedTypeId
     }
     return (TokenTypeLabel ([string]$field.SelectedTypeId))
+}
+
+function GetFieldTypeStatus($field) {
+    if ($field.IsAmbiguous -and (-not $field.SelectedTypeId -or $field.SelectedTypeId -eq 'Auto')) {
+        return (T 'FieldStatus_Choice')
+    }
+    if ($field.IsAmbiguous) { return (T 'FieldStatus_Resolved') }
+    return (T 'FieldStatus_Detected')
+}
+
+function GetFieldCandidateSummary($field) {
+    $labels = @($field.CandidateTypes | ForEach-Object {
+            if ($_.TypeId -eq 'DateTime' -and $_.Format) {
+                "$(T 'Type_DateTime') ($($_.Format))"
+            }
+            elseif ([string]$_.TypeId -like 'Custom:*' -and $_.DisplayName) {
+                [string]$_.DisplayName
+            }
+            else {
+                TokenTypeLabel ([string]$_.TypeId)
+            }
+        } | Select-Object -Unique)
+    if ($labels.Count -eq 0) { return (T 'Type_Text') }
+    return ($labels -join ', ')
 }
 
 function GetResolvedFieldType($field) {
@@ -1337,7 +1451,7 @@ function ValidateFieldValues([hashtable]$values) {
         if ($field.IsVirtual -or -not $values.ContainsKey($field.Name)) { continue }
         $resolvedType = GetResolvedFieldType $field
         if (-not (Test-FNTValueType -Value ([string]$values[$field.Name]) -TypeId $resolvedType.TypeId `
-                -Format $resolvedType.Format -CustomTypeRules @($script:Config.CustomTypeRules))) {
+            -Format $resolvedType.Format -CustomTypeRules @($script:CustomTypeRules))) {
             $formatText = if ($resolvedType.Format) { " ($($resolvedType.Format))" } else { '' }
             throw "$($field.Name): '$($values[$field.Name])' != $($resolvedType.TypeId)$formatText"
         }
@@ -1353,7 +1467,7 @@ function ParseNameByTemplate([string]$name, $templateParts) {
     }
     $pattern = if ($TokenRegex -and $TokenRegex.Text) { $TokenRegex.Text } else { '(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)' }
     $match = Match-FNTNamePattern -Name $name -PatternTokens @($templateParts) -TokenizerPattern $pattern `
-        -FieldTypes $fieldTypes -CustomTypeRules @($script:Config.CustomTypeRules)
+        -FieldTypes $fieldTypes -CustomTypeRules @($script:CustomTypeRules)
     return $match.Values
 }
 
@@ -1397,10 +1511,7 @@ function BuildPatternList {
     $raw = @()
     foreach ($f in $files) {
         $parts = Tokens $f.BaseName
-        $sig = ($parts | ForEach-Object {
-                if ($_.IsSeparator) { 'S:' + $_.Value + '|' }
-            else { 'T:' + $_.DetectedTypeId + '|' }
-            }) -join ''
+        $sig = Get-FNTTokenSignature -Tokens @($parts)
         $raw += [pscustomobject]@{ Signature = $sig; Parts = $parts; File = $f }
     }
 
@@ -1477,6 +1588,8 @@ function SetPattern($pattern) {
                 SelectedTypeId = 'Auto'
                 SelectedFormat = $null
                 EffectiveType = $type
+                TypeStatus    = if ($inference.IsAmbiguous) { (T 'FieldStatus_Choice') } else { (T 'FieldStatus_Detected') }
+                CandidateSummary = GetFieldCandidateSummary ([pscustomobject]@{ CandidateTypes = @($inference.CandidateTypes) })
                 Name         = $name
                 Role         = $role
                 IsVirtual    = $false
@@ -1545,7 +1658,7 @@ function ApplyTransforms([string]$value, $transforms) {
     return $value
 }
 
-function ShowTransformDialog {
+function ShowTransformDialog($field) {
     $form = New-Object Windows.Forms.Form
     $form.Text = (T 'Title_AddTransform')
     $form.Size = New-Object Drawing.Size(520, 300)
@@ -1553,6 +1666,13 @@ function ShowTransformDialog {
     $form.Font = New-Object Drawing.Font('Segoe UI', 9)
     $form.FormBorderStyle = 'FixedDialog'
     $form.MaximizeBox = $false
+    $defaultDateInputFormat = 'yyyyMMdd'
+    if ($field) {
+        $resolvedType = GetResolvedFieldType $field
+        if ($resolvedType.TypeId -eq 'DateTime' -and $resolvedType.Format) {
+            $defaultDateInputFormat = [string]$resolvedType.Format
+        }
+    }
 
     # Type label and combobox
     $lblType = New-Object Windows.Forms.Label
@@ -1619,7 +1739,7 @@ function ShowTransformDialog {
                 1 {
                     # DateFormat
                     $paramLabels[0].Text = (T 'Tr_FmtIn'); $paramLabels[0].Visible = $true
-                    $paramControls[0].Text = 'yyyyMMdd'; $paramControls[0].Visible = $true
+                    $paramControls[0].Text = $defaultDateInputFormat; $paramControls[0].Visible = $true
                     $paramLabels[1].Text = (T 'Tr_FmtOut'); $paramLabels[1].Visible = $true
                     $paramControls[1].Visible = $true
                 }
@@ -1986,6 +2106,7 @@ function UpdateOutputExample {
                     $values[$f.Name] = $item.Parts[$f.PartIndex].Value
                 }
             }
+            ValidateFieldValues $values
 
             # 2. Apply mappings (in order, allows chaining)
             foreach ($m in $script:Mappings) {
@@ -2028,7 +2149,7 @@ function UpdateOutputExample {
             $preview = "`n`n$(T 'Prefix_Source'):   $($item.File.Name)`n$(T 'Result'):   $name$ext"
         }
         catch {
-            $preview = "`n`n($(T 'PreviewUnavailable'): $($_.Exception.Message))"
+            $preview = "`n`n($(T 'PreviewUnavailable'): $(GetLocalizedErrorMessage $_.Exception))"
         }
     }
 
@@ -2168,7 +2289,7 @@ function FullBuildPreview {
         catch {
             $row.StatusCode = 'Error'
             $row.Status = (T 'Title_Error')
-            $row.Details = $_.Exception.Message
+            $row.Details = GetLocalizedErrorMessage $_.Exception
         }
 
         $script:PreviewRows.Add([pscustomobject]$row)
@@ -2311,6 +2432,7 @@ function SaveProfile {
         KeepExtension = [bool]$KeepExtension.IsChecked
         NewExtension  = $NewExtension.Text
     }
+    $obj = ConvertTo-FNTProfile ([pscustomobject]$obj)
 
     $path = Join-Path $script:ProfileRoot ($name + '.json')
     $obj | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path -Encoding UTF8
@@ -2322,7 +2444,8 @@ function SaveProfile {
 }
 
 function LoadProfile([string]$path) {
-    $p = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    $rawProfile = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+    $p = ConvertTo-FNTProfile $rawProfile
 
     # Restore fields
     $script:Fields.Clear()
@@ -2334,36 +2457,9 @@ function LoadProfile([string]$path) {
         }
         $_.Transforms = $transforms
 
-        # Backward compatibility: ensure new properties exist
-        if (-not $_.PSObject.Properties['IsVirtual']) {
-            $_ | Add-Member -NotePropertyName 'IsVirtual' -NotePropertyValue $false -Force
-        }
         if (-not $_.PSObject.Properties['Source']) {
             $src = if ($_.IsVirtual) { (T 'Src_Mapping') } else { (T 'Src_Name') }
             $_ | Add-Member -NotePropertyName 'Source' -NotePropertyValue $src -Force
-        }
-        if (-not $_.PSObject.Properties['PartIndex']) {
-            $pi = if ($_.PSObject.Properties['Index']) { $_.Index } else { -1 }
-            $_ | Add-Member -NotePropertyName 'PartIndex' -NotePropertyValue $pi -Force
-        }
-        if (-not $_.PSObject.Properties['DisplayIndex']) {
-            $di = if ($_.IsVirtual) { 'V' } else { "$($_.PartIndex)" }
-            $_ | Add-Member -NotePropertyName 'DisplayIndex' -NotePropertyValue $di -Force
-        }
-        if (-not $_.PSObject.Properties['DetectedTypeId']) {
-            $_ | Add-Member -NotePropertyName 'DetectedTypeId' -NotePropertyValue (ConvertLegacyTypeId ([string]$_.DetectedType)) -Force
-        }
-        if (-not $_.PSObject.Properties['CandidateTypes']) {
-            $_ | Add-Member -NotePropertyName 'CandidateTypes' -NotePropertyValue @() -Force
-        }
-        if (-not $_.PSObject.Properties['IsAmbiguous']) {
-            $_ | Add-Member -NotePropertyName 'IsAmbiguous' -NotePropertyValue ($_.DetectedTypeId -eq 'Ambiguous') -Force
-        }
-        if (-not $_.PSObject.Properties['SelectedTypeId']) {
-            $_ | Add-Member -NotePropertyName 'SelectedTypeId' -NotePropertyValue 'Auto' -Force
-        }
-        if (-not $_.PSObject.Properties['SelectedFormat']) {
-            $_ | Add-Member -NotePropertyName 'SelectedFormat' -NotePropertyValue $null -Force
         }
         $_.DetectedType = TokenTypeLabel ([string]$_.DetectedTypeId)
         if (-not $_.PSObject.Properties['EffectiveType']) {
@@ -2371,6 +2467,18 @@ function LoadProfile([string]$path) {
         }
         else {
             $_.EffectiveType = GetEffectiveTypeLabel $_
+        }
+        if (-not $_.PSObject.Properties['TypeStatus']) {
+            $_ | Add-Member -NotePropertyName 'TypeStatus' -NotePropertyValue (GetFieldTypeStatus $_) -Force
+        }
+        else {
+            $_.TypeStatus = GetFieldTypeStatus $_
+        }
+        if (-not $_.PSObject.Properties['CandidateSummary']) {
+            $_ | Add-Member -NotePropertyName 'CandidateSummary' -NotePropertyValue (GetFieldCandidateSummary $_) -Force
+        }
+        else {
+            $_.CandidateSummary = GetFieldCandidateSummary $_
         }
 
         $script:Fields.Add($_)
@@ -2451,6 +2559,7 @@ $FieldGrid.Add_SelectionChanged({
                 } | Select-Object -First 1)
             if ($selectedType.Count -gt 0) { $FieldType.SelectedItem = $selectedType[0] }
             else { $FieldType.SelectedIndex = 0 }
+            $CandidateInfo.Text = GetFieldCandidateSummary $f
             # Show transforms for this field
             $TransformList.ItemsSource = $null
             if ($f.Transforms) {
@@ -2473,6 +2582,8 @@ $FieldApply.Add_Click({
             $f.SelectedTypeId = if ($selectedType) { [string]$selectedType.Id } else { 'Auto' }
             $f.SelectedFormat = if ($selectedType) { [string]$selectedType.Format } else { $null }
             $f.EffectiveType = GetEffectiveTypeLabel $f
+            $f.TypeStatus = GetFieldTypeStatus $f
+            $f.CandidateSummary = GetFieldCandidateSummary $f
 
             # Update references in OutputParts and Mappings when name changed
             if ($oldName -ne $newName) {
@@ -2507,7 +2618,7 @@ $TransformAdd.Add_Click({
         try {
             $f = $FieldGrid.SelectedItem
             if (-not $f) { throw (T 'Err_SelFieldTrans') }
-            $result = ShowTransformDialog
+            $result = ShowTransformDialog $f
             if ($result) {
                 if (-not $f.Transforms) {
                     $f.Transforms = [System.Collections.ArrayList]::new()
@@ -2771,8 +2882,7 @@ $LanguageSelector.Add_SelectionChanged({
         if ($LanguageSelector.SelectedItem) {
             $tag = $LanguageSelector.SelectedItem.Tag
             if ($tag -and $tag -ne $script:CurrentLanguage) {
-                $script:Config.Language = $tag
-                $script:Config.Version = 2
+                $script:Config = Set-FNTConfigLanguage -Config $script:Config -Language $tag
                 $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
                 [Windows.MessageBox]::Show((T 'Msg_ConfirmRestart'), (T 'Title_Info'), 'OK', 'Information') | Out-Null
             }

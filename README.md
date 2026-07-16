@@ -84,6 +84,7 @@ Custom named regex types are configured in `config.json`. Patterns must match th
   "CustomTypeRules": [
     {
       "Id": "DepartmentCode",
+      "DisplayName": "Department code",
       "Pattern": "^[A-Z]{3}-\\d{3}$",
       "Enabled": true,
       "AllowComposite": true
@@ -92,7 +93,10 @@ Custom named regex types are configured in `config.json`. Patterns must match th
 }
 ```
 
-Changing the UI language preserves custom rules. Invalid custom patterns are reported during analysis.
+Changing the UI language preserves custom rules. Invalid custom patterns are reported at startup.
+Custom rule IDs must start with a letter and may contain letters, numbers, dots, underscores, and hyphens. IDs are case-insensitively unique. Invalid or duplicate rules are reported separately at startup and skipped without disabling built-in recognition. `DisplayName` is optional and defaults to `Id`.
+
+Custom rules remain file-configured in this iteration. Edit `config.json` before starting the application; an in-app rule management dialog is not currently planned.
 
 ## Tests
 
@@ -101,6 +105,28 @@ Run the parser and matcher tests with Pester:
 ```powershell
 Invoke-Pester .\tests\FileNameTransformation.Core.Tests.ps1
 ```
+
+## Manual Test Dataset
+
+Create an empty test folder and add files with these names before running analysis:
+
+```text
+Report_20260116_Final.csv
+Report_2025-01-16_Final.csv
+Report_010225_Final.csv
+Report_123.45_Final.csv
+Report_1.2.3_Final.csv
+Report_6F9619FF-8B86-D011-B42D-00C04FC964FF_Final.csv
+Report_2025-02-31_Final.csv
+```
+
+Expected results:
+
+- `2025-01-16` is one `DateTime` field despite the hyphens.
+- `010225` is ambiguous and requires a type/date-format selection.
+- `123.45`, `1.2.3`, and the GUID are recognized as decimal, version, and GUID fields.
+- `2025-02-31` is not accepted as a valid date.
+- Changing a separator or removing a segment produces a strict preview error when **Enforce pattern** is enabled.
 
 ## Notes
 
