@@ -10,6 +10,10 @@
     The script then builds target filenames from user-defined templates and offers a preview grid to validate
     results before copying or moving files.
 
+    Tokenizer regex: the expression must match every filename segment. Use the named group
+    (?<sep>...) for literal separators; all other matches are treated as value fields. The default
+    (?<value>[^_\-\s]+)|(?<sep>[_\-\s]+) splits values on underscores, hyphens, and whitespace.
+
     Features:
     - Multi-language UI (Polish, English, German).
     - Saveable and reusable profiles in JSON format.
@@ -174,6 +178,10 @@ $script:Translations = @{
         'Type_Date_1'            = 'Data (yyyyMMdd)'
         'Type_Date_2'            = 'Data (yyyy-MM-dd)'
         'Type_Date_3'            = 'Data (dd-MM-yyyy)'
+        'Type_Date_4'            = 'Data (yyyy-MM)'
+        'Type_Date_5'            = 'Data (MM-yyyy)'
+        'Type_Date_6'            = 'Data (YYMMDD lub DDMMYY)'
+        'Type_Date_7'            = 'Data (MM-DD lub DD-MM)'
         'Type_Num'               = 'Liczba'
         'Type_Text'              = 'Tekst'
         'Hint_SelectField'       = 'Wybierz pole, nadaj mu nazwę biznesową i dodaj transformacje lub mapowania.'
@@ -285,8 +293,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profil usunięty:'
         'Chk_EnforcePattern'     = 'Wymuś wzorzec na pozostałych plikach'
         'Txt_TokenRegex'         = 'Wzorzec Regex:'
-        'Tip_TokenRegexLabel'    = 'Domyślnie: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
-        'Tip_TokenRegex'         = 'Wyrażenie regularne używane do rozbijania nazw plików na bloki (tokeny). Grupy: value = segment wartości, sep = separator.'
+        'Tip_TokenRegex'         = 'Domyślnie: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegexLabel'    = 'Regex musi dopasować każdy segment nazwy. Użyj (?&lt;sep&gt;...) dla separatorów; pozostałe dopasowania są wartościami. Przykład: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+).'
     }
     'EN' = @{
         'WinTitle'               = 'File Name Transformer'
@@ -393,6 +401,10 @@ $script:Translations = @{
         'Type_Date_1'            = 'Date (yyyyMMdd)'
         'Type_Date_2'            = 'Date (yyyy-MM-dd)'
         'Type_Date_3'            = 'Date (dd-MM-yyyy)'
+        'Type_Date_4'            = 'Date (yyyy-MM)'
+        'Type_Date_5'            = 'Date (MM-yyyy)'
+        'Type_Date_6'            = 'Date (YYMMDD or DDMMYY)'
+        'Type_Date_7'            = 'Date (MM-DD or DD-MM)'
         'Type_Num'               = 'Number'
         'Type_Text'              = 'Text'
         'Hint_SelectField'       = 'Select a field, give it a business name, and add transformations or mappings.'
@@ -500,8 +512,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profile deleted:'
         'Chk_EnforcePattern'     = 'Enforce pattern on other files'
         'Txt_TokenRegex'         = 'Regex Pattern:'
-        'Tip_TokenRegexLabel'    = 'Default: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
-        'Tip_TokenRegex'         = 'Regular expression used to split filenames into blocks (tokens). Groups: value = value segment, sep = separator.'
+        'Tip_TokenRegex'         = 'Default: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegexLabel'    = 'The regex must match every filename segment. Use (?&lt;sep&gt;...) for separators; all other matches are values. Example: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+).'
     }
     'DE' = @{
         'WinTitle'               = 'File Name Transformer'
@@ -608,6 +620,10 @@ $script:Translations = @{
         'Type_Date_1'            = 'Datum (yyyyMMdd)'
         'Type_Date_2'            = 'Datum (yyyy-MM-dd)'
         'Type_Date_3'            = 'Datum (dd-MM-yyyy)'
+        'Type_Date_4'            = 'Datum (yyyy-MM)'
+        'Type_Date_5'            = 'Datum (MM-yyyy)'
+        'Type_Date_6'            = 'Datum (YYMMDD oder DDMMYY)'
+        'Type_Date_7'            = 'Datum (MM-DD oder DD-MM)'
         'Type_Num'               = 'Zahl'
         'Type_Text'              = 'Text'
         'Hint_SelectField'       = 'Wählen Sie ein Feld aus, geben Sie ihm einen Geschäftsnamen und fügen Sie Transformationen oder Zuordnungen hinzu.'
@@ -718,8 +734,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profil gelöscht:'
         'Chk_EnforcePattern'     = 'Muster auf andere Dateien erzwingen'
         'Txt_TokenRegex'         = 'Regex-Muster:'
-        'Tip_TokenRegexLabel'    = 'Standard: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
-        'Tip_TokenRegex'         = 'Regulärer Ausdruck zum Aufteilen von Dateinamen in Blöcke (Token). Gruppen: value = Wertsegment, sep = Trennzeichen.'
+        'Tip_TokenRegex'         = 'Standard: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegexLabel'    = 'Der Regex muss jedes Segment des Dateinamens erfassen. Verwenden Sie (?&lt;sep&gt;...) für Trennzeichen; alle anderen Treffer sind Werte. Beispiel: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+).'
     }
 }
 function T([string]$Key) {
@@ -1186,9 +1202,13 @@ function Tokens([string]$name) {
 }
 
 function TokenType([string]$v) {
-    if ($v -match '^\d{8}$') { return (T 'Type_Date_1') }
-    if ($v -match '^\d{4}[-_.]\d{2}[-_.]\d{2}$') { return (T 'Type_Date_2') }
-    if ($v -match '^\d{2}[-_.]\d{2}[-_.]\d{4}$') { return (T 'Type_Date_3') }
+    if ($v -match '^\d{8}$') { return (T 'Type_Date_1') } #Date in YYYYMMDD format
+    if ($v -match '^\d{4}[-_.]\d{2}[-_.]\d{2}$') { return (T 'Type_Date_2') } #Date in YYYY-MM-DD, YYYY.MM.DD, or YYYY_MM_DD format
+    if ($v -match '^\d{2}[-_.]\d{2}[-_.]\d{4}$') { return (T 'Type_Date_3') } #date in DD-MM-YYYY, DD.MM.YYYY, or DD_MM_YYYY format
+    if ($v -match '^\d{4}[-_.]\d{2}$') { return (T 'Type_Date_4') } #date in YYYY-MM format
+    if ($v -match '^\d{2}[-_.]\d{4}$') { return (T 'Type_Date_5') } #date in MM-YYYY format`
+    if ($v -match '^\d{6}$') { return (T 'Type_Date_6') } #date in YYMMDD or DDMMYY format
+    if ($v -match '^\d{2}[-_.]\d{2}$') { return (T 'Type_Date_7') } #date in MM-DD or DD-MM format
     if ($v -match '^\d+$') { return (T 'Type_Num') }
     return (T 'Type_Text')
 }
@@ -1313,7 +1333,7 @@ function SetPattern($pattern) {
         $type = TokenType $parts[$i].Value
 
         # Auto-detect role
-        $role = if ($type -like 'Data*') { (T 'Role_Date') }
+        $role = if ($type -like 'Dat*') { (T 'Role_Date') }
         elseif ($uniqueValues.Count -eq 1) { (T 'Role_Const') }
         else { (T 'Role_Value') }
 
@@ -1596,8 +1616,8 @@ function CsvHeaders([string]$path) {
 
     # Auto-detect delimiter by frequency
     $delimiter = @(';', ',', "`t", '|') |
-        Sort-Object { ([regex]::Matches($headerLine, [regex]::Escape($_))).Count } -Descending |
-        Select-Object -First 1
+    Sort-Object { ([regex]::Matches($headerLine, [regex]::Escape($_))).Count } -Descending |
+    Select-Object -First 1
 
     $headers = @()
     if ($headerLine) {

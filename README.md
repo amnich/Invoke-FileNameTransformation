@@ -41,6 +41,18 @@ powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
 4. **Build the output name**: Assemble the target filename from fields, text, and separators.
 5. **Preview and execute**: Review the results and run the copy or move operation.
 
+## Tokenizer Regex Pattern
+
+The **Regex Pattern** determines how each filename is split into values and separators during analysis. The expression must match every segment of the filename. Use the named capture group `(?<sep>...)` for literal separators; every other match is treated as a value that can become a field.
+
+The default pattern splits on underscores, hyphens, and whitespace:
+
+```regex
+(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)
+```
+
+For example, `Report_20260116-Final` becomes the values `Report`, `20260116`, and `Final`, with `_` and `-` preserved as separators. To use different separators, include them in the `sep` group, such as `(?<value>[^.]+)|(?<sep>[.])` for dot-separated names.
+
 ## Notes
 
 - Profiles, logs, and the language configuration are stored under the user's AppData folder.
