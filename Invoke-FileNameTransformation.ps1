@@ -75,6 +75,7 @@ $script:Translations = @{
         'Source_Folder'          = 'Folder źródłowy:'
         'Btn_Browse'             = 'Wybierz...'
         'Dest_Folder'            = 'Folder wynikowy:'
+        'Lbl_Language'           = 'Język:'
         'Chk_Recursive'          = 'Skanuj także podfoldery'
         'Chk_PreserveStructure'  = 'Zachowaj strukturę folderów w folderze wynikowym'
         'Tab_Profile'            = '1. Profil'
@@ -293,6 +294,7 @@ $script:Translations = @{
         'Source_Folder'          = 'Source folder:'
         'Btn_Browse'             = 'Browse...'
         'Dest_Folder'            = 'Destination folder:'
+        'Lbl_Language'           = 'Language:'
         'Chk_Recursive'          = 'Scan subfolders'
         'Chk_PreserveStructure'  = 'Preserve folder structure in destination folder'
         'Tab_Profile'            = '1. Profile'
@@ -507,6 +509,7 @@ $script:Translations = @{
         'Source_Folder'          = 'Quellordner:'
         'Btn_Browse'             = 'Durchsuchen...'
         'Dest_Folder'            = 'Zielordner:'
+        'Lbl_Language'           = 'Sprache:'
         'Chk_Recursive'          = 'Unterordner scannen'
         'Chk_PreserveStructure'  = 'Ordnerstruktur im Zielordner beibehalten'
         'Tab_Profile'            = '1. Profil'
@@ -784,11 +787,14 @@ $xamlTemplate = @'
       <DockPanel>
         <TextBlock x:Name="StatusText"/>
         <TextBlock x:Name="LogText" DockPanel.Dock="Right" Foreground="#52606D"/>
-        <ComboBox x:Name="LanguageSelector" DockPanel.Dock="Right" Width="100" Margin="0,0,15,0" MinHeight="22" Padding="4,2">
-          <ComboBoxItem Content="Polski" Tag="PL"/>
-          <ComboBoxItem Content="English" Tag="EN"/>
-          <ComboBoxItem Content="Deutsch" Tag="DE"/>
-        </ComboBox>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
+                    <Label Content="{t:Lbl_Language}" VerticalAlignment="Center" Padding="0" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="LanguageSelector" Width="100" MinHeight="22" Padding="4,2">
+                        <ComboBoxItem Content="Polski" Tag="PL"/>
+                        <ComboBoxItem Content="English" Tag="EN"/>
+                        <ComboBoxItem Content="Deutsch" Tag="DE"/>
+                    </ComboBox>
+                </StackPanel>
       </DockPanel>
     </Border>
 
@@ -1693,7 +1699,7 @@ function AddMappingDialog([object]$mapping = $null) {
 
     # Browse button for data file
     $browse = New-Object Windows.Forms.Button
-    $browse.Text = 'Wybierz...'
+    $browse.Text = $(T 'Btn_Browse')
     $browse.Location = New-Object Drawing.Point(520, 117)
     $browse.Size = New-Object Drawing.Size(80, 25)
     $form.Controls.Add($browse)
