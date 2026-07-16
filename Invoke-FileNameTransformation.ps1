@@ -263,6 +263,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profil usunięty:'
         'Chk_EnforcePattern'     = 'Wymuś wzorzec na pozostałych plikach'
         'Txt_TokenRegex'         = 'Wzorzec Regex:'
+        'Tip_TokenRegexLabel'    = 'Domyślnie: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegex'         = 'Wyrażenie regularne używane do rozbijania nazw plików na bloki (tokeny). Grupy: value = segment wartości, sep = separator.'
     }
     'EN' = @{
         'WinTitle'               = 'File Name Transformer'
@@ -469,6 +471,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profile deleted:'
         'Chk_EnforcePattern'     = 'Enforce pattern on other files'
         'Txt_TokenRegex'         = 'Regex Pattern:'
+        'Tip_TokenRegexLabel'    = 'Default: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegex'         = 'Regular expression used to split filenames into blocks (tokens). Groups: value = value segment, sep = separator.'
     }
     'DE' = @{
         'WinTitle'               = 'File Name Transformer'
@@ -675,6 +679,8 @@ $script:Translations = @{
         'Status_ProfDel'         = 'Profil gelöscht:'
         'Chk_EnforcePattern'     = 'Muster auf andere Dateien erzwingen'
         'Txt_TokenRegex'         = 'Regex-Muster:'
+        'Tip_TokenRegexLabel'    = 'Standard: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)'
+        'Tip_TokenRegex'         = 'Regulärer Ausdruck zum Aufteilen von Dateinamen in Blöcke (Token). Gruppen: value = Wertsegment, sep = Trennzeichen.'
     }
 }
 function T([string]$Key) {
@@ -763,6 +769,7 @@ $xamlTemplate = @'
           <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <Label Grid.Row="0" Content="{t:Source_Folder}"/>
           <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1"/>
@@ -770,9 +777,9 @@ $xamlTemplate = @'
           <Label Grid.Row="1" Content="{t:Dest_Folder}"/>
           <TextBox x:Name="DestinationPath" Grid.Row="1" Grid.Column="1"/>
           <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}"/>
-          <CheckBox x:Name="Recursive" Grid.Row="1" Grid.Column="1"
+          <CheckBox x:Name="Recursive" Grid.Row="2" Grid.Column="1"
                     Content="{t:Chk_Recursive}"
-                    Margin="4,34,4,0" VerticalAlignment="Top"/>
+                    Margin="4,2,4,4" VerticalAlignment="Center"/>
         </Grid>
       </GroupBox>
 
@@ -821,8 +828,8 @@ $xamlTemplate = @'
               <Button x:Name="Analyze" Content="{t:Btn_Analyze}" Background="#D6E9FC"/>
               <TextBlock Text="{t:Txt_Extension}" Margin="14,9,0,0"/>
               <ComboBox x:Name="ExtensionFilter" Width="130"/>
-              <TextBlock Text="{t:Txt_TokenRegex}" Margin="14,9,0,0" Foreground="#52606D" ToolTip="Domyślnie: (?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)"/>
-              <TextBox x:Name="TokenRegex" Width="200" Text="(?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)" ToolTip="Wyrażenie regularne używane do rozbijania nazw plików na bloki." FontFamily="Consolas"/>
+              <TextBlock Text="{t:Txt_TokenRegex}" Margin="14,9,0,0" Foreground="#52606D" ToolTip="{t:Tip_TokenRegexLabel}"/>
+              <TextBox x:Name="TokenRegex" Width="400" Text="(?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)" ToolTip="{t:Tip_TokenRegex}" FontFamily="Consolas"/>
               <TextBlock x:Name="AnalysisInfo" Margin="14,9,0,0"/>
             </WrapPanel>
             <Grid Grid.Row="1">
