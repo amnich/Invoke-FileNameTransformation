@@ -1,4 +1,4 @@
-#requires -Version 5.1
+﻿#requires -Version 5.1
 <#
 .SYNOPSIS
     GUI utility for advanced file renaming and structural transformation.
@@ -17,12 +17,13 @@
     - External CSV-based mapping support.
     
 .EXAMPLE
-    .\FileNameTransformer.GUI.ps1
+    .\Invoke-FileNameTransformation.ps1
     Launches the application GUI.
 
 .NOTES
     Requires PowerShell 5.1 and must be executed in STA (Single-Threaded Apartment) mode.
 #>
+
 [CmdletBinding()]
 param()
 $ErrorActionPreference = 'Stop'
@@ -43,9 +44,10 @@ if (-not (Get-Variable -Name AppRoot -Scope Script -ErrorAction SilentlyContinue
 }
 $script:ConfigPath = Join-Path $script:AppRoot 'config.json'
 $script:CurrentLanguage = 'PL'
-Write-Verbose $script:ConfigPath
+
 if (Test-Path $script:ConfigPath) {
     try {
+        Write-Verbose $script:ConfigPath
         $config = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
         if ($config.Language -in @('PL', 'EN', 'DE')) {
             $script:CurrentLanguage = $config.Language
@@ -108,6 +110,8 @@ $script:Translations = @{
         'Header_Mappings'        = 'Mapowania (zamiana wartości z pliku CSV/TXT)'
         'Txt_MappingHint'        = 'Mapowanie zamienia wartość pola na inną wartość z pliku zewnętrznego. Tworzy nowe pole wirtualne dostępne w nazwie docelowej.'
         'Btn_AddMapping'         = 'Dodaj mapowanie'
+        'Btn_Edit'               = 'Edytuj'
+        'Title_EditMapping'      = 'Edytuj mapowanie'
         'Btn_Up'                 = 'W górę'
         'Btn_Down'               = 'W dół'
         'Tab_DestName'           = '4. Nazwa docelowa'
@@ -127,7 +131,10 @@ $script:Translations = @{
         'Cbo_Ready'              = 'Gotowe'
         'Btn_Export'             = 'Eksportuj raport CSV'
         'Btn_OpenLog'            = 'Otwórz log'
-        'Btn_Execute'            = 'Kopiuj pliki'
+        'Btn_Execute'            = 'Wykonaj'
+        'Lbl_ExecutionMode'      = 'Akcja:'
+        'Action_Copy'            = 'Kopiuj'
+        'Action_Move'            = 'Przenieś'
         'Col_SourceFile'         = 'Plik źródłowy'
         'Col_DestName'           = 'Nazwa docelowa'
         'Col_Status'             = 'Status'
@@ -183,8 +190,8 @@ $script:Translations = @{
         'Tr_Pad'                 = 'Dopełnienie znakami'
         'Tr_PosStart'            = 'Pozycja startowa (0 = początek):'
         'Tr_CharCount'           = 'Liczba znaków:'
-        'Tr_FmtIn'               = 'Format wejściowy (np. yyyyMMdd):'
-        'Tr_FmtOut'              = 'Format wyjściowy (np. yyyy_MM):'
+        'Tr_FmtIn'               = 'Format wejściowy:'
+        'Tr_FmtOut'              = 'Format wyjściowy:'
         'Tr_Search'              = 'Szukany tekst:'
         'Tr_NewTxt'              = 'Nowy tekst (pusty = usuń):'
         'Tr_Mode'                = 'Tryb:'
@@ -223,6 +230,7 @@ $script:Translations = @{
         'Title_FileErr'          = 'Błąd pliku'
         'Err_FillFields'         = 'Uzupełnij wszystkie pola.'
         'Title_MissingData'      = 'Brak danych'
+        'Err_SelMapping'         = 'Wybierz mapowanie do edycji.'
         'Err_SelectPattern'      = 'Najpierw wybierz wzorzec na karcie 2 (Analiza plików).'
         'Err_AddDest'            = 'Dodaj elementy nazwy docelowej na karcie 4.'
         'Err_DestNotExist'       = 'Wskaż istniejący folder wynikowy.'
@@ -238,9 +246,12 @@ $script:Translations = @{
         'Err_FixPrev'            = 'błędów w podglądzie. Napraw je przed kopiowaniem.'
         'Msg_CopyCount'          = 'Skopiować'
         'Msg_CopyOrig'           = 'plików? Oryginały nie zostaną zmienione.'
+        'Msg_MoveOrig'           = 'plików? Oryginały zostaną przeniesione.'
         'Log_Copied'             = 'Skopiowano:'
+        'Log_Moved'              = 'Przeniesiono:'
         'Log_CopyErr'            = 'Błąd kopiowania:'
         'Status_Copied'          = 'Zakończono. Skopiowano:'
+        'Status_Moved'           = 'Zakończono. Przeniesiono:'
         'Lbl_ProfileName'        = 'Nazwa profilu:'
         'Status_ProfSaved'       = 'Profil zapisany:'
         'Status_ProfLoaded'      = 'Profil wczytany:'
@@ -316,6 +327,8 @@ $script:Translations = @{
         'Header_Mappings'        = 'Mappings (value replacement from CSV/TXT)'
         'Txt_MappingHint'        = 'Mapping replaces a field value with another value from an external file. It creates a new virtual field available in destination name.'
         'Btn_AddMapping'         = 'Add mapping'
+        'Btn_Edit'               = 'Edit'
+        'Title_EditMapping'      = 'Edit mapping'
         'Btn_Up'                 = 'Move up'
         'Btn_Down'               = 'Move down'
         'Tab_DestName'           = '4. Destination name'
@@ -335,7 +348,10 @@ $script:Translations = @{
         'Cbo_Ready'              = 'Ready'
         'Btn_Export'             = 'Export CSV report'
         'Btn_OpenLog'            = 'Open log'
-        'Btn_Execute'            = 'Copy files'
+        'Btn_Execute'            = 'Execute'
+        'Lbl_ExecutionMode'      = 'Action:'
+        'Action_Copy'            = 'Copy'
+        'Action_Move'            = 'Move'
         'Col_SourceFile'         = 'Source file'
         'Col_DestName'           = 'Destination name'
         'Col_Status'             = 'Status'
@@ -391,8 +407,8 @@ $script:Translations = @{
         'Tr_Pad'                 = 'Padding'
         'Tr_PosStart'            = 'Start position (0 = start):'
         'Tr_CharCount'           = 'Number of characters:'
-        'Tr_FmtIn'               = 'Input format (e.g. yyyyMMdd):'
-        'Tr_FmtOut'              = 'Output format (e.g. yyyy_MM):'
+        'Tr_FmtIn'               = 'Input format:'
+        'Tr_FmtOut'              = 'Output format:'
         'Tr_Search'              = 'Search text:'
         'Tr_NewTxt'              = 'New text (empty = remove):'
         'Tr_Mode'                = 'Mode:'
@@ -524,6 +540,8 @@ $script:Translations = @{
         'Header_Mappings'        = 'Zuordnungen (Wertersatz aus CSV/TXT)'
         'Txt_MappingHint'        = 'Die Zuordnung ersetzt einen Feldwert durch einen anderen Wert aus einer externen Datei. Es wird ein neues virtuelles Feld erstellt.'
         'Btn_AddMapping'         = 'Zuordnung hinzufügen'
+        'Btn_Edit'               = 'Bearbeiten'
+        'Title_EditMapping'      = 'Zuordnung bearbeiten'
         'Btn_Up'                 = 'Nach oben'
         'Btn_Down'               = 'Nach unten'
         'Tab_DestName'           = '4. Zielname'
@@ -543,7 +561,10 @@ $script:Translations = @{
         'Cbo_Ready'              = 'Bereit'
         'Btn_Export'             = 'CSV-Bericht exportieren'
         'Btn_OpenLog'            = 'Protokoll öffnen'
-        'Btn_Execute'            = 'Dateien kopieren'
+        'Btn_Execute'            = 'Ausführen'
+        'Lbl_ExecutionMode'      = 'Aktion:'
+        'Action_Copy'            = 'Kopieren'
+        'Action_Move'            = 'Verschieben'
         'Col_SourceFile'         = 'Quelldatei'
         'Col_DestName'           = 'Zielname'
         'Col_Status'             = 'Status'
@@ -599,8 +620,8 @@ $script:Translations = @{
         'Tr_Pad'                 = 'Auffüllen'
         'Tr_PosStart'            = 'Startposition (0 = Anfang):'
         'Tr_CharCount'           = 'Anzahl der Zeichen:'
-        'Tr_FmtIn'               = 'Eingabeformat (z.B. yyyyMMdd):'
-        'Tr_FmtOut'              = 'Ausgabeformat (z.B. yyyy_MM):'
+        'Tr_FmtIn'               = 'Eingabeformat:'
+        'Tr_FmtOut'              = 'Ausgabeformat:'
         'Tr_Search'              = 'Suchtext:'
         'Tr_NewTxt'              = 'Neuer Text (leer = entfernen):'
         'Tr_Mode'                = 'Modus:'
@@ -654,9 +675,12 @@ $script:Translations = @{
         'Err_FixPrev'            = 'Fehler in der Vorschau. Beheben Sie diese vor dem Kopieren.'
         'Msg_CopyCount'          = 'Kopieren'
         'Msg_CopyOrig'           = 'Dateien? Originale werden nicht geändert.'
+        'Msg_MoveOrig'           = 'Dateien? Originale werden verschoben.'
         'Log_Copied'             = 'Kopiert:'
+        'Log_Moved'              = 'Verschoben:'
         'Log_CopyErr'            = 'Kopierfehler:'
         'Status_Copied'          = 'Abgeschlossen. Kopiert:'
+        'Status_Moved'           = 'Abgeschlossen. Verschoben:'
         'Lbl_ProfileName'        = 'Profilname:'
         'Status_ProfSaved'       = 'Profil gespeichert:'
         'Status_ProfLoaded'      = 'Profil geladen:'
@@ -691,7 +715,11 @@ function T([string]$Key) {
 }
 #endregion
 #region Application Directories and State
-$script:AppRoot = Join-Path $env:APPDATA 'FileNameTransformer'
+$baseAppRoot = if ($env:APPDATA) { Join-Path $env:APPDATA 'FileNameTransformer' } elseif ($script:AppRoot) { $script:AppRoot } else { (Get-Location).Path }
+if ([string]::IsNullOrWhiteSpace($baseAppRoot)) {
+    $baseAppRoot = [System.IO.Path]::GetTempPath()
+}
+$script:AppRoot = $baseAppRoot
 $script:ProfileRoot = Join-Path $script:AppRoot 'Profiles'
 $script:LogRoot = Join-Path $script:AppRoot 'Logs'
 New-Item -ItemType Directory -Path $script:ProfileRoot, $script:LogRoot -Force | Out-Null
@@ -920,6 +948,7 @@ $xamlTemplate = @'
                   <ListBox x:Name="MappingList" DisplayMemberPath="Display" Height="105" Margin="4"/>
                   <WrapPanel>
                     <Button x:Name="MappingAdd"    Content="{t:Btn_AddMapping}"/>
+                    <Button x:Name="MappingEdit"   Content="{t:Btn_Edit}"/>
                     <Button x:Name="MappingRemove" Content="{t:Btn_Delete}"/>
                     <Button x:Name="MappingUp"     Content="{t:Btn_Up}"/>
                     <Button x:Name="MappingDown"   Content="{t:Btn_Down}"/>
@@ -1002,6 +1031,11 @@ $xamlTemplate = @'
             <StackPanel DockPanel.Dock="Bottom">
               <ProgressBar x:Name="ProgressBar" Height="18" Margin="4" Visibility="Collapsed"/>
               <WrapPanel HorizontalAlignment="Right">
+                <TextBlock Text="{t:Lbl_ExecutionMode}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <ComboBox x:Name="ExecutionMode" Width="110" Margin="0,0,8,0">
+                  <ComboBoxItem Content="{t:Action_Copy}" IsSelected="True"/>
+                  <ComboBoxItem Content="{t:Action_Move}"/>
+                </ComboBox>
                 <Button x:Name="ExportAudit" Content="{t:Btn_Export}"/>
                 <Button x:Name="OpenLog"     Content="{t:Btn_OpenLog}"/>
                 <Button x:Name="Execute"     Content="{t:Btn_Execute}" Background="#C6EFCE"/>
@@ -1058,6 +1092,17 @@ $xamlDoc.SelectNodes('//*[@x:Name]', $ns) | ForEach-Object {
 #region Utility Functions
 
 function Log([string]$message, [string]$level = 'INFO') {
+    if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
+        if ([string]::IsNullOrWhiteSpace($script:LogRoot)) {
+            $script:LogRoot = Join-Path $script:AppRoot 'Logs'
+        }
+        if ([string]::IsNullOrWhiteSpace($script:AppRoot)) {
+            $script:AppRoot = [System.IO.Path]::GetTempPath()
+        }
+        New-Item -ItemType Directory -Path $script:LogRoot -Force | Out-Null
+        $script:LogPath = Join-Path $script:LogRoot ('FileNameTransformer_{0:yyyyMMdd_HHmmss}.log' -f (Get-Date))
+    }
+
     $line = '{0:yyyy-MM-dd HH:mm:ss} [{1}] {2}' -f (Get-Date), $level, $message
     Add-Content -LiteralPath $script:LogPath -Encoding UTF8 -Value $line
 }
@@ -1078,9 +1123,12 @@ function ErrorBox([string]$title, $err) {
 function FolderDialog([string]$caption, [string]$initial) {
     $dlg = New-Object System.Windows.Forms.FolderBrowserDialog
     $dlg.Description = $caption
-    if (Test-Path -LiteralPath $initial -PathType Container) {
-        $dlg.SelectedPath = $initial
+
+    $initialPath = [string]$initial
+    if (-not [string]::IsNullOrWhiteSpace($initialPath) -and (Test-Path -LiteralPath $initialPath -PathType Container)) {
+        $dlg.SelectedPath = $initialPath
     }
+
     if ($dlg.ShowDialog() -eq 'OK') { $dlg.SelectedPath }
 }
 
@@ -1519,12 +1567,22 @@ function ShowTransformDialog {
 #region Mapping Functions
 
 function CsvHeaders([string]$path) {
-    $firstLine = Get-Content -LiteralPath $path -TotalCount 1 -Encoding UTF8
+    $headerLine = Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1
+    if (-not $headerLine) {
+        return [pscustomobject]@{ Delimiter = ','; Headers = @() }
+    }
+
     # Auto-detect delimiter by frequency
     $delimiter = @(';', ',', "`t", '|') |
-    Sort-Object { ([regex]::Matches($firstLine, [regex]::Escape($_))).Count } -Descending |
-    Select-Object -First 1
-    $headers = @((Import-Csv -LiteralPath $path -Delimiter $delimiter -TotalCount 1)[0].PSObject.Properties.Name)
+        Sort-Object { ([regex]::Matches($headerLine, [regex]::Escape($_))).Count } -Descending |
+        Select-Object -First 1
+
+    $headers = @()
+    if ($headerLine) {
+        $headers = @($headerLine -split [regex]::Escape($delimiter))
+        $headers = @($headers | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+    }
+
     [pscustomobject]@{ Delimiter = $delimiter; Headers = $headers }
 }
 
@@ -1548,9 +1606,9 @@ function EnsureVirtualField([string]$name) {
     }
 }
 
-function AddMappingDialog {
+function AddMappingDialog([object]$mapping = $null) {
     $form = New-Object Windows.Forms.Form
-    $form.Text = (T 'Title_AddMapping')
+    $form.Text = if ($mapping) { (T 'Title_EditMapping') } else { (T 'Title_AddMapping') }
     $form.Size = New-Object Drawing.Size(650, 310)
     $form.StartPosition = 'CenterParent'
     $form.Font = New-Object Drawing.Font('Segoe UI', 9)
@@ -1590,14 +1648,39 @@ function AddMappingDialog {
     # Populate input field combo with all field names
     $controls[1].Items.AddRange(@($script:Fields | ForEach-Object { $_.Name }))
 
+    if ($mapping) {
+        $controls[0].Text = [string]$mapping.Name
+        $controls[1].SelectedItem = $mapping.InputField
+        $controls[2].Text = [string]$mapping.OutputField
+        $controls[3].Text = [string]$mapping.Path
+        $controls[4].SelectedItem = $mapping.KeyColumn
+        $controls[5].SelectedItem = $mapping.ValueColumn
+        if ($mapping.Path) {
+            try {
+                $h = CsvHeaders $mapping.Path
+                $script:tempDelimiter = $h.Delimiter
+                $controls[4].Items.Clear()
+                $controls[5].Items.Clear()
+                $controls[4].Items.AddRange($h.Headers)
+                $controls[5].Items.AddRange($h.Headers)
+            }
+            catch {
+                $script:tempDelimiter = $mapping.Delimiter
+            }
+        }
+        else {
+            $script:tempDelimiter = $mapping.Delimiter
+        }
+    }
+
+    $script:tempDelimiter = if ($mapping -and $mapping.Delimiter) { [string]$mapping.Delimiter } else { ',' }
+
     # Browse button for data file
     $browse = New-Object Windows.Forms.Button
     $browse.Text = 'Wybierz...'
     $browse.Location = New-Object Drawing.Point(520, 117)
     $browse.Size = New-Object Drawing.Size(80, 25)
     $form.Controls.Add($browse)
-
-    $script:tempDelimiter = ','
 
     $browse.Add_Click({
             $p = FileDialog
@@ -1622,7 +1705,7 @@ function AddMappingDialog {
 
     # Add button
     $btnOk = New-Object Windows.Forms.Button
-    $btnOk.Text = (T 'Btn_Add')
+    $btnOk.Text = if ($mapping) { (T 'Btn_Edit') } else { (T 'Btn_Add') }
     $btnOk.Location = New-Object Drawing.Point(520, 225)
     $btnOk.Size = New-Object Drawing.Size(80, 30)
     $form.Controls.Add($btnOk)
@@ -1638,21 +1721,51 @@ function AddMappingDialog {
                 return
             }
 
-            $mapping = [pscustomobject]@{
-                Name        = $controls[0].Text
-                InputField  = [string]$controls[1].SelectedItem
-                OutputField = $controls[2].Text.Trim()
-                Path        = $controls[3].Text
-                KeyColumn   = [string]$controls[4].SelectedItem
-                ValueColumn = [string]$controls[5].SelectedItem
-                Delimiter   = $script:tempDelimiter
-                Display     = "$($controls[0].Text): $($controls[1].SelectedItem) → $($controls[2].Text)"
+            $targetMapping = $mapping
+            if ($targetMapping) {
+                $oldOutputField = [string]$targetMapping.OutputField
+                $targetMapping.Name = $controls[0].Text
+                $targetMapping.InputField = [string]$controls[1].SelectedItem
+                $targetMapping.OutputField = $controls[2].Text.Trim()
+                $targetMapping.Path = $controls[3].Text
+                $targetMapping.KeyColumn = [string]$controls[4].SelectedItem
+                $targetMapping.ValueColumn = [string]$controls[5].SelectedItem
+                $targetMapping.Delimiter = $script:tempDelimiter
+                $targetMapping.Display = "$($controls[0].Text): $($controls[1].SelectedItem) → $($controls[2].Text)"
+            }
+            else {
+                $targetMapping = [pscustomobject]@{
+                    Name        = $controls[0].Text
+                    InputField  = [string]$controls[1].SelectedItem
+                    OutputField = $controls[2].Text.Trim()
+                    Path        = $controls[3].Text
+                    KeyColumn   = [string]$controls[4].SelectedItem
+                    ValueColumn = [string]$controls[5].SelectedItem
+                    Delimiter   = $script:tempDelimiter
+                    Display     = "$($controls[0].Text): $($controls[1].SelectedItem) → $($controls[2].Text)"
+                }
+                $script:Mappings.Add($targetMapping)
             }
 
-            $script:Mappings.Add($mapping)
-
-            # Create virtual field for the output
-            EnsureVirtualField $mapping.OutputField
+            # Create or refresh virtual field for the output
+            $newOutputField = [string]$targetMapping.OutputField
+            if ($mapping) {
+                $oldOutputField = [string]$mapping.OutputField
+                if ($oldOutputField -and $oldOutputField -ne $newOutputField) {
+                    $stillUsed = $false
+                    foreach ($m in $script:Mappings) {
+                        if ($m.OutputField -eq $oldOutputField) { $stillUsed = $true; break }
+                    }
+                    if (-not $stillUsed) {
+                        $toRemove = $null
+                        foreach ($f in $script:Fields) {
+                            if ($f.IsVirtual -and $f.Name -eq $oldOutputField) { $toRemove = $f; break }
+                        }
+                        if ($toRemove) { $script:Fields.Remove($toRemove) }
+                    }
+                }
+            }
+            EnsureVirtualField $newOutputField
 
             # Refresh UI
             $MappingList.ItemsSource = $null
@@ -1742,10 +1855,10 @@ function UpdateOutputExample {
             else { $NewExtension.Text.Trim() }
             if ($ext -and -not $ext.StartsWith('.')) { $ext = '.' + $ext }
 
-            $preview = "`n`nŹródło:   $($item.File.Name)`nWynik:    $name$ext"
+            $preview = "`n`n$(T 'Prefix_Source'):   $($item.File.Name)`n$(T 'Result'):   $name$ext"
         }
         catch {
-            $preview = "`n`n(Podgląd niedostępny: $($_.Exception.Message))"
+            $preview = "`n`n($(T 'PreviewUnavailable'): $($_.Exception.Message))"
         }
     }
 
@@ -1858,7 +1971,7 @@ function FullBuildPreview {
 
             # Validate filename characters
             if ($name.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw (T 'Err_InvalidChars')
+                throw ($(T 'Err_InvalidChars') + " $name")
             }
 
             # Extension
@@ -1927,14 +2040,23 @@ function ExecuteCopy {
     # Rebuild preview to get fresh state
     FullBuildPreview
 
-    $errors = @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Error' })
-    if ($errors) {
-        throw "$(T 'Err_Blocked') $($errors.Count) $(T 'Err_FixPrev')"
+    #$errors = @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Error' })
+    #if ($errors) {
+    #    throw "$(T 'Err_Blocked') $($errors.Count) $(T 'Err_FixPrev')"
+    #}
+
+    $mode = if ($ExecutionMode -and $ExecutionMode.SelectedIndex -eq 1) { 'Move' } else { 'Copy' }
+    $modeLabel = if ($mode -eq 'Move') { (T 'Action_Move') } else { (T 'Action_Copy') }
+    $confirmText = if ($mode -eq 'Move') {
+        "$modeLabel $((($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }).Count)) $(T 'Msg_MoveOrig')"
+    }
+    else {
+        "$modeLabel $((($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }).Count)) $(T 'Msg_CopyOrig')"
     }
 
-    $total = $script:PreviewRows.Count
+    $total = ($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }).Count
     $confirm = [Windows.MessageBox]::Show(
-        "Skopiować $total plików?`nOryginały nie zostaną zmienione.",
+        $confirmText,
         (T 'Title_Confirm'), 'YesNo', 'Question'
     )
     if ($confirm -ne 'Yes') { return }
@@ -1946,13 +2068,19 @@ function ExecuteCopy {
 
     $ok = 0; $fail = 0
 
-    foreach ($r in $script:PreviewRows) {
+    foreach ($r in $script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }) {
         try {
             $dir = Split-Path $r.DestinationPath -Parent
             New-Item -ItemType Directory -Path $dir -Force | Out-Null
-            Copy-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop
+            if ($mode -eq 'Move') {
+                Move-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
+                Log "$(T 'Log_Moved') $($r.SourcePath) -> $($r.DestinationPath)"
+            }
+            else {
+                Copy-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
+                Log "$(T 'Log_Copied') $($r.SourcePath) -> $($r.DestinationPath)"
+            }
             $ok++
-            Log "$(T 'Log_Copied') $($r.SourcePath) -> $($r.DestinationPath)"
         }
         catch {
             $fail++
@@ -1963,7 +2091,12 @@ function ExecuteCopy {
     }
 
     $ProgressBar.Visibility = 'Collapsed'
-    SetStatus "$(T 'Status_Copied') $ok; $(T 'Msg_Errors'): $fail"
+    if ($mode -eq 'Move') {
+        SetStatus "$(T 'Status_Moved') $ok; $(T 'Msg_Errors'): $fail"
+    }
+    else {
+        SetStatus "$(T 'Status_Copied') $ok; $(T 'Msg_Errors'): $fail"
+    }
 }
 
 #endregion
@@ -2188,6 +2321,13 @@ $TransformRemove.Add_Click({
 # --- Tab 3: Mappings ---
 $MappingAdd.Add_Click({
         try { AddMappingDialog; UpdateOutputExample }
+        catch { ErrorBox (T 'Err_Mapping') $_ }
+    })
+
+$MappingEdit.Add_Click({
+        $i = $MappingList.SelectedIndex
+        if ($i -lt 0) { throw (T 'Err_SelMapping') }
+        try { AddMappingDialog $script:Mappings[$i]; UpdateOutputExample }
         catch { ErrorBox (T 'Err_Mapping') $_ }
     })
 
@@ -2433,5 +2573,280 @@ SetStatus (T 'Status_Ready')
 
 [void]$window.ShowDialog()
 #endregion
-
-
+# SIG # Begin signature block
+# MIIzcgYJKoZIhvcNAQcCoIIzYzCCM18CAQExDzANBglghkgBZQMEAgEFADB5Bgor
+# BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDCsdiaDDXmmKGr
+# 5m2mVADEV4brEKV65k1gT6YERkwcrKCCLJEwggaCMIIEaqADAgECAhA2wrC9fBs6
+# 56Oz3TbLyXVoMA0GCSqGSIb3DQEBDAUAMIGIMQswCQYDVQQGEwJVUzETMBEGA1UE
+# CBMKTmV3IEplcnNleTEUMBIGA1UEBxMLSmVyc2V5IENpdHkxHjAcBgNVBAoTFVRo
+# ZSBVU0VSVFJVU1QgTmV0d29yazEuMCwGA1UEAxMlVVNFUlRydXN0IFJTQSBDZXJ0
+# aWZpY2F0aW9uIEF1dGhvcml0eTAeFw0yMTAzMjIwMDAwMDBaFw0zODAxMTgyMzU5
+# NTlaMFcxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxLjAs
+# BgNVBAMTJVNlY3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcgUm9vdCBSNDYwggIi
+# MA0GCSqGSIb3DQEBAQUAA4ICDwAwggIKAoICAQCIndi5RWedHd3ouSaBmlRUwHxJ
+# BZvMWhUP2ZQQRLRBQIF3FJmp1OR2LMgIU14g0JIlL6VXWKmdbmKGRDILRxEtZdQn
+# Oh2qmcxGzjqemIk8et8sE6J+N+Gl1cnZocew8eCAawKLu4TRrCoqCAT8uRjDeypo
+# GJrruH/drCio28aqIVEn45NZiZQI7YYBex48eL78lQ0BrHeSmqy1uXe9xN04aG0p
+# KG9ki+PC6VEfzutu6Q3IcZZfm00r9YAEp/4aeiLhyaKxLuhKKaAdQjRaf/h6U13j
+# QEV1JnUTCm511n5avv4N+jSVwd+Wb8UMOs4netapq5Q/yGyiQOgjsP/JRUj0MAT9
+# YrcmXcLgsrAimfWY3MzKm1HCxcquinTqbs1Q0d2VMMQyi9cAgMYC9jKc+3mW62/y
+# Vl4jnDcw6ULJsBkOkrcPLUwqj7poS0T2+2JMzPP+jZ1h90/QpZnBkhdtixMiWDVg
+# h60KmLmzXiqJc6lGwqoUqpq/1HVHm+Pc2B6+wCy/GwCcjw5rmzajLbmqGygEgaj/
+# OLoanEWP6Y52Hflef3XLvYnhEY4kSirMQhtberRvaI+5YsD3XVxHGBjlIli5u+Nr
+# LedIxsE88WzKXqZjj9Zi5ybJL2WjeXuOTbswB7XjkZbErg7ebeAQUQiS/uRGZ58N
+# Hs57ZPUfECcgJC+v2wIDAQABo4IBFjCCARIwHwYDVR0jBBgwFoAUU3m/WqorSs9U
+# gOHYm8Cd8rIDZsswHQYDVR0OBBYEFPZ3at0//QET/xahbIICL9AKPRQlMA4GA1Ud
+# DwEB/wQEAwIBhjAPBgNVHRMBAf8EBTADAQH/MBMGA1UdJQQMMAoGCCsGAQUFBwMI
+# MBEGA1UdIAQKMAgwBgYEVR0gADBQBgNVHR8ESTBHMEWgQ6BBhj9odHRwOi8vY3Js
+# LnVzZXJ0cnVzdC5jb20vVVNFUlRydXN0UlNBQ2VydGlmaWNhdGlvbkF1dGhvcml0
+# eS5jcmwwNQYIKwYBBQUHAQEEKTAnMCUGCCsGAQUFBzABhhlodHRwOi8vb2NzcC51
+# c2VydHJ1c3QuY29tMA0GCSqGSIb3DQEBDAUAA4ICAQAOvmVB7WhEuOWhxdQRh+S3
+# OyWM637ayBeR7djxQ8SihTnLf2sABFoB0DFR6JfWS0snf6WDG2gtCGflwVvcYXZJ
+# JlFfym1Doi+4PfDP8s0cqlDmdfyGOwMtGGzJ4iImyaz3IBae91g50QyrVbrUoT0m
+# UGQHbRcF57olpfHhQEStz5i6hJvVLFV/ueQ21SM99zG4W2tB1ExGL98idX8ChsTw
+# bD/zIExAopoe3l6JrzJtPxj8V9rocAnLP2C8Q5wXVVZcbw4x4ztXLsGzqZIiRh5i
+# 111TW7HV1AtsQa6vXy633vCAbAOIaKcLAo/IU7sClyZUk62XD0VUnHD+YvVNvIGe
+# zjM6CRpcWed/ODiptK+evDKPU2K6synimYBaNH49v9Ih24+eYXNtI38byt5kIvh+
+# 8aW88WThRpv8lUJKaPn37+YHYafob9Rg7LyTrSYpyZoBmwRWSE4W6iPjB7wJjJpH
+# 29308ZkpKKdpkiS9WNsf/eeUtvRrtIEiSJHN899L1P4l6zKVsdrUu1FX1T/ubSrs
+# xrYJD+3f3aKg6yxdbugot06YwGXXiy5UUGZvOu3lXlxA+fC13dQ5OlL2gIb5lmF6
+# Ii8+CQOYDwXM+yd9dbmocQsHjcRPsccUd5E9FiswEqORvz8g3s+jR3SFCgXhN4wz
+# 7NgAnOgpCdUo4uDyllU9PzCCBqcwggSPoAMCAQICEQCQrAhyIP3Fp8RrXMcN9z0G
+# MA0GCSqGSIb3DQEBDAUAMFcxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9TZWN0aWdv
+# IExpbWl0ZWQxLjAsBgNVBAMTJVNlY3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcg
+# Um9vdCBSNDYwHhcNMjYwMzI1MDAwMDAwWhcNNDEwMzI0MjM1OTU5WjBVMQswCQYD
+# VQQGEwJHQjEYMBYGA1UEChMPU2VjdGlnbyBMaW1pdGVkMSwwKgYDVQQDEyNTZWN0
+# aWdvIFB1YmxpYyBUaW1lIFN0YW1waW5nIENBIFI0MTCCAiIwDQYJKoZIhvcNAQEB
+# BQADggIPADCCAgoCggIBAK7kSqIBrYIcYvlmLVuaA8zw1RfBhkn4G1CoemzjcYtM
+# L6yNUvKmwGH7y6/5MuSC1UYP/+9KYDSqvMQt/1hEKHYxMAD9oZpBkoaDQFEKbOJH
+# elsKe+BaO0ZcENTKfePcraVkA7wrGAW2XHA5gQCQv4IKori/3PNOXxnDMOk8yIMg
+# VrlMeTxqfWJ4XkjT1xc2s9DD7URHWWJOFobTPoWs6mrDFlaY9FlAHDYTfbzvxQHV
+# svRmn3W+5ZmCwyk02I8KgGPT/UX4sTz41GiR+ppwUjQXa1+2tEHZbsdAKUtH3OPE
+# VtZvlt7atx4h83IdRR8oYi8wjY3OjFKXFecWpQbzzsPxbUKPwMWiTrzwkrFa8dH/
+# 1pDKRJt371W62PfqKPayCr/XbnBOlRn8CALSmHnRtGzuAWtTJpcT3BKw6oy8IIL6
+# wSbu938F6ZIbRNIc1dKbIJtr4ULN6R5ZfTdNEhwXctqp3RHDbg4fuOl6LjNoaFwj
+# ud92EEDhzxFJzE1jqN4csceZIwxOT1aqfsfh0uFQE/lgTBuBs3i6/WL2W1OceWLy
+# 3XEdXRK1f0EWCuea6dNfX2RRdjUfk5EltFnJkN2+bWhnK14OPRKcyjOv5hKZ0iV4
+# NRNd1+hjtva1rPyzb5Bs7EvFxqEQhgZbOq7qH3nm0rBwA0dxniBOYCFPdu246JCx
+# AgMBAAGjggFuMIIBajAfBgNVHSMEGDAWgBT2d2rdP/0BE/8WoWyCAi/QCj0UJTAd
+# BgNVHQ4EFgQUOnSlDGfGQlDC/bX8x7spNIL0erkwDgYDVR0PAQH/BAQDAgGGMBIG
+# A1UdEwEB/wQIMAYBAf8CAQAwEwYDVR0lBAwwCgYIKwYBBQUHAwgwIwYDVR0gBBww
+# GjAIBgZngQwBBAIwDgYMKwYBBAGyMQECAQMIMEwGA1UdHwRFMEMwQaA/oD2GO2h0
+# dHA6Ly9jcmwuc2VjdGlnby5jb20vU2VjdGlnb1B1YmxpY1RpbWVTdGFtcGluZ1Jv
+# b3RSNDYuY3JsMHwGCCsGAQUFBwEBBHAwbjBHBggrBgEFBQcwAoY7aHR0cDovL2Ny
+# dC5zZWN0aWdvLmNvbS9TZWN0aWdvUHVibGljVGltZVN0YW1waW5nUm9vdFI0Ni5w
+# N2MwIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLnNlY3RpZ28uY29tMA0GCSqGSIb3
+# DQEBDAUAA4ICAQAy3lJHZvGeA2b43yhzoarvobHVzbfl+RfuPDwej0wCQkYAN6sc
+# Tt2GwFe22qbOCv/tllqFlLKQZE+E9jVyuPTbyQHwrM7R0oLapAEDC1+CowsqSRf/
+# ptira5Pfd4PoHICnb9coPQtyZmHSQp5y9IGvqWf1qNfq7V2fHZ8DvEQrLUzeoGF9
+# BJRYu2OzacW3QQtUum3NOVf0gPRwv6I4991uhncJ6VP4lcpUpHZKB7R3hiIUC09m
+# R9KjzPVnXHvL9n2bAwiUECfK5Zezhiw27F2tgi39DETfU8M4n0N6xLgFzsf05M5G
+# URX8C9+IX9V6kpmmKtrUzMti4LD66gtmf+mSm934K81NL6YQeMEk1rpYrWPypcW7
+# 6Mir6wb1AgseLIHqn/GkeuQm7zOTDf3f5WoX14qVNjZWNHF3JxkutV6ZnhinfCLf
+# dv5bnwKWUfceqOajCVntI6uCbHxjBg6SCsexc5AfIGno7gVFvwifT4XONPsSUaJ7
+# 1XsJ+EvciVUVnjOO4qxm0fWJTd8a7jP8mc4ZPqwJvQFtOp7+6G+kUJAF0fnE8YgD
+# 8uttBReNTa1YmAeFMiqc38e8fI4eLm0zjM/eeGCHasnoqqrbGwcF41iz9HXzFDwN
+# 4iD5z3QShp6HRiU3UpTwDJiiXcr0z6pjl7PyzJ3/tmWtGehV7CAfc/WlyzCCBuIw
+# ggTKoAMCAQICEQDnTvJVsFBP+tum3/f8i6MVMA0GCSqGSIb3DQEBDAUAMFUxCzAJ
+# BgNVBAYTAkdCMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxLDAqBgNVBAMTI1Nl
+# Y3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcgQ0EgUjQxMB4XDTI2MDMyNTAwMDAw
+# MFoXDTM3MDYyNDIzNTk1OVowcjELMAkGA1UEBhMCR0IxFzAVBgNVBAgTDkdyZWF0
+# ZXIgTG9uZG9uMRgwFgYDVQQKEw9TZWN0aWdvIExpbWl0ZWQxMDAuBgNVBAMTJ1Nl
+# Y3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcgU2lnbmVyIFIzNzCCAiIwDQYJKoZI
+# hvcNAQEBBQADggIPADCCAgoCggIBALL/w21L3FDZRS0FEXfZuPtUrefibnRSqOT/
+# NNyJLOJhXjQfUspqHT+gSSVgbjYThUI/cO+wFQHoOakKQNnSMKdkE8gR69ofXlkk
+# 5DAVY/ZlevliOUmlvrw2Vuz4SU28rHfb/Vgd17eqpRIvJuO6XE8vPpPzn4c4iors
+# zUF6nwuynKEQ/+rqfDmQbFNKsa+5+Z4f4kXwKdUFxUwUDjQWUhiHRwMlUWGF9N91
+# aAvL+9a4sxCgqR/ez8W8HJ/XqvSu1vIeb+J6bDFKKgkv3PJkMMpQ0BsdeXR2FejZ
+# XFRXY1w9dZe6gqyMv7px+TpWbYMefECUV0WxoEMgXUk6RKcLo94uUHOdmfZu4Xe8
+# ghglyro3/N4VEKTj8dcPPvOBGxFEx1QH6uHKTkWhloGPDScurcZnd8KUtTHl6zml
+# QDHM04MwGfsmQViKnYEAYE8RHl5XRE6GTq0ZMb59SIyJX6+CODVic/kW+dhbIS1Z
+# 5AP8HaGne/PRG+12QzSneKDJp3Ot+k4GrmmlWT9iy6FNCQ/32K+d4cAZ+Ll7uWbE
+# n6Z6gE+tEu7MyZvzWvPNsRKMkcyyflFW1zpRyzutwypALXc9Qg7sFsYERNXa58KZ
+# XqU9Onc/tck6+adQJFM9tW8xOnE//P5I4eDj84IGGKqzgUD37ihC+WST3DfY0YBK
+# WL0ZaubnAgMBAAGjggGOMIIBijAfBgNVHSMEGDAWgBQ6dKUMZ8ZCUML9tfzHuyk0
+# gvR6uTAdBgNVHQ4EFgQUYRDpehKvUcSF1PLPpHQPUM0gr/gwDgYDVR0PAQH/BAQD
+# AgbAMAwGA1UdEwEB/wQCMAAwFgYDVR0lAQH/BAwwCgYIKwYBBQUHAwgwSgYDVR0g
+# BEMwQTAIBgZngQwBBAIwNQYMKwYBBAGyMQECAQMIMCUwIwYIKwYBBQUHAgEWF2h0
+# dHBzOi8vc2VjdGlnby5jb20vQ1BTMEoGA1UdHwRDMEEwP6A9oDuGOWh0dHA6Ly9j
+# cmwuc2VjdGlnby5jb20vU2VjdGlnb1B1YmxpY1RpbWVTdGFtcGluZ0NBUjQxLmNy
+# bDB6BggrBgEFBQcBAQRuMGwwRQYIKwYBBQUHMAKGOWh0dHA6Ly9jcnQuc2VjdGln
+# by5jb20vU2VjdGlnb1B1YmxpY1RpbWVTdGFtcGluZ0NBUjQxLmNydDAjBggrBgEF
+# BQcwAYYXaHR0cDovL29jc3Auc2VjdGlnby5jb20wDQYJKoZIhvcNAQEMBQADggIB
+# AAPqPY3RrM36GXqTpsoHn9TpW5I6z3dkFvc9zPL1W0Egq7j3jtnkbAvRoWeAjGX4
+# ZK4sWsmA+u4EJG8okQmybuS/4tDUI5UIQb21n4hG2vihxShrneWB0VoQ2VLQ3jCC
+# RmRtAQ+/7H7WVKNiH5Pgl4v2ZTOdPsStzpKnl1YuRrmww/+bcZmLqgk909ywIpZq
+# AfubYfbEMYjIckLk90f2mG+L8qaGSS2JJVM02pV5XltZ1fbOFETpRN/PQhwygIv3
+# 3qUUjJ1fE4ITgw0McMzRqziWdOJP8ocxxw7qXxz1OdRWCalyL1qvUgAFnZTVdSRi
+# MYZKf0wLcQcM/1Xf1W4FW9nff8ERX8RZJGt/TtPuMWmUpf6BCv9Q6o8YyUTtknvZ
+# RpSQ0nLttWXdtwsrN2mMgfMuR//gxVrVXvDzCoK/lbiA6dEZOW53lQwBFtEzwE/F
+# H8JdhegyYg4PymZOTZrGBEvgsbxe25yEhJ0IdGa1pwCYsarldJhJVMdNcAOU7jyI
+# MqHcczav3wtIXp/SwbXZ3xX0mfsLfANSJ47G4qPgx1atb6GIlTaQXzu/p4fTQeAI
+# UVzZXT4K984IyfuO7NLjWMtog1wGUpZD98pv+4Mt9Y5bvfPUjaUVjtePy1DVdi0r
+# l5ESNYi0zyOmXVxtA5zzxu1H7RdLZOZugT/XjX69rY9bMIIHvDCCBaSgAwIBAgIQ
+# G6SpMny8vKlEMbMo1Op93TANBgkqhkiG9w0BAQsFADCBsTELMAkGA1UEBhMCREUx
+# EDAOBgNVBAgTB1NhY2hzZW4xEDAOBgNVBAcTB0ZyZWl0YWwxLDAqBgNVBAsTI0Nv
+# cnBvcmF0ZSBJVCAtIENlcnRpZmljYXRlIFNlcnZpY2VzMSAwHgYDVQQKExdCR0gg
+# RWRlbHN0YWhsd2Vya2UgR21iSDEuMCwGA1UEAxMlQkdIIFN0YW5kYXJkIFJvb3Qg
+# Q0EgUlNBIDQwOTYgU0hBLTI1NjAeFw0yNTEyMDUxMzMyMDRaFw0zMjEyMDUxMzQy
+# MDNaMIGxMQswCQYDVQQGEwJERTEQMA4GA1UECBMHU2FjaHNlbjEQMA4GA1UEBxMH
+# RnJlaXRhbDEsMCoGA1UECxMjQ29ycG9yYXRlIElUIC0gQ2VydGlmaWNhdGUgU2Vy
+# dmljZXMxIDAeBgNVBAoTF0JHSCBFZGVsc3RhaGx3ZXJrZSBHbWJIMS4wLAYDVQQD
+# EyVCR0ggU3RhbmRhcmQgUm9vdCBDQSBSU0EgNDA5NiBTSEEtMjU2MIICIjANBgkq
+# hkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAmWLPLjvA4BAV6LbWDGWRreHQerrTR3K7
+# 8FdnB75zoGHYHr9lIcXimJji80OqStuZGkADcAOwy3K0WYlPXeuiQ8yaLWCo2fl1
+# WYT97bQ808rS5qSp5RUAuPM5qqFi2FUQ41MekcXn3qeiyy84hOKzFXUM4+dFki7n
+# s9J/VfO9CvAxJXkzBDFCO1QLtzbCu+2LV0BJPQBSE5qJq23yB/ijAxsx0anckNpQ
+# VP0GrDCNckuv41OlOsLRv6EZFMJKaCYGSrcEQcXLY2jrqLbuqyXdfHNYaGCOr41y
+# 5FRjrI14Qtl15345LxY1LweebgOfIpcjDOPruBi1L/k3IeT1g4Zt6DC1Y4PvAiAD
+# n11Wxcgl9CXQ0U86/HmHSwAjgUKRKLkVWo6nVLqqGxXcYUMMfoYLTtXsFlvchbxb
+# dOhHwUhOAz6L7xoietCNNtAX90BQuYi4hKczK4FN4esgBNsBEMZVDq7jKA8CFdqj
+# gQvka6kB+w4ooaOe4AP3Y2JBq0uzXKvE0eRD+07GOKLop/acS7aMrh+khxJxmzzG
+# TVZ+sTIxHQvS6hZ6rmgnUCTx5vnzS2g8Cal8mxwXI0zMWca8LYXFDgmuU6HfsV0n
+# 31eJZZFaSf3eISxb37eLhxNt3Cdb5RDGREjBNqLBoLEYaQ7buCQavzWwmAOZypMs
+# +qj938yJxokCAwEAAaOCAcwwggHIMA4GA1UdDwEB/wQEAwIBBjASBgNVHRMBAf8E
+# CDAGAQH/AgECMB0GA1UdDgQWBBQ5TwDIRXn4MWVDK8ocXVyJ8+z4pjBQBgNVHR8E
+# STBHMEWgQ6BBhj9odHRwOi8vcGtpLmJnaC1pbnRyYS5uZXQvY3JsL0JHSFN0YW5k
+# YXJkUm9vdENBUlNBNDA5NlNIQTI1Ni5jcmwwEAYJKwYBBAGCNxUBBAMCAQAwgcEG
+# A1UdIAEB/wSBtjCBszCBsAYKKwYBBAGD+V8CATCBoTBcBggrBgEFBQcCAjBQHk4A
+# QgBHAEgAIABTAHQAYQBuAGQAYQByAGQAIABSAG8AbwB0ACAAQwBBACAAQwBlAHIA
+# dABpAGYAaQBjAGEAdABlACAAUABvAGwAaQBjAHkwQQYIKwYBBQUHAgEWNWh0dHBz
+# Oi8vcGtpLmJnaC1pbnRyYS5uZXQvY3BzL0JHSC1Sb290Q1AtU3RhbmRhcmQucGRm
+# MFsGCCsGAQUFBwEBBE8wTTBLBggrBgEFBQcwAoY/aHR0cDovL3BraS5iZ2gtaW50
+# cmEubmV0L2FpYS9CR0hTdGFuZGFyZFJvb3RDQVJTQTQwOTZTSEEyNTYuY3J0MA0G
+# CSqGSIb3DQEBCwUAA4ICAQBVuSpejkCj3kXH7P4gPh50Ly3NeMgqh3rTjTy4Eb6D
+# +sQCAVcbMvGUaS2mFDWSVBqoyrMrw13mqK9EDHuFUCiqMPrODPPFVGYN0+B4cEmG
+# Tkf54Cjh3uwQao9nttFzVTb/ezKSBbIpP0ARoad4z8z95cMBd9VEFQPgt4vPwTnd
+# uag0pJFQm16RTxqWF17TBFWTu4DBPQyChiZFdSdDLHEHY78VRhH2kRSYmBlY5zwx
+# 0cJ4n6mIZwgLu0zES6oYrDvywbWN9zgzffI+NpIVJZtd0WwXXW0lSw9445kaRHCL
+# O1hUGfuFDnfiOTpARF3b/tbd9LD5yQsgsn58UbLOZpL0otRX87kNZ9CMiIGmQND4
+# XgIZ1A4MG4nGzcKIgiILYrn3+SxM6NAiGttE4rBgVSUJQuWoljwRadStLEIvDiYx
+# gIDNb1CWwkb2w4ezDMHe6RbZ9GSAplF2shJb7dFsYEBRAPFUNHL+LsyUxOjW9M00
+# zmN9WKIrMODhTzzydg1jDpYcnoJxoHqk0rG9O/wZqvYdlO3f8y0VIkvTXDgk95Dg
+# uv2i82NNy5jYAoDTb/gYCJ/SB7+Px8dn9NszC0J4p5266xrkRbTjFgrYPfa70M/k
+# KB31wefyjiEXObx+Eyg7YSOky5ndbtg5pMJK758eChqA6DdwDHtssSzeu8LPw7G6
+# 9DCCCAYwggXuoAMCAQICE1IAAAAKWeR5eJNiiY4AAAAAAAowDQYJKoZIhvcNAQEL
+# BQAwgbExCzAJBgNVBAYTAkRFMRAwDgYDVQQIEwdTYWNoc2VuMRAwDgYDVQQHEwdG
+# cmVpdGFsMSwwKgYDVQQLEyNDb3Jwb3JhdGUgSVQgLSBDZXJ0aWZpY2F0ZSBTZXJ2
+# aWNlczEgMB4GA1UEChMXQkdIIEVkZWxzdGFobHdlcmtlIEdtYkgxLjAsBgNVBAMT
+# JUJHSCBTdGFuZGFyZCBSb290IENBIFJTQSA0MDk2IFNIQS0yNTYwHhcNMjUxMjEy
+# MTM1OTA3WhcNMzAxMjEyMTQwOTA3WjCBxTELMAkGA1UEBhMCREUxEDAOBgNVBAgT
+# B1NhY2hzZW4xEDAOBgNVBAcTB0ZyZWl0YWwxIDAeBgNVBAoTF0JHSCBFZGVsc3Rh
+# aGx3ZXJrZSBHbWJIMSwwKgYDVQQLEyNDb3Jwb3JhdGUgSVQgLSBDZXJ0aWZpY2F0
+# ZSBTZXJ2aWNlczFCMEAGA1UEAxM5QkdIIENvZGUgYW5kIERvY3VtZW50IFNpZ25p
+# bmcgSXNzdWluZyBDQSBSU0EgMzA3MiBTSEEtMjU2MIIBojANBgkqhkiG9w0BAQEF
+# AAOCAY8AMIIBigKCAYEAyi3TjjSUYgUP8zghYc+sqilmYPerbRnUgi4V5m7+YpuA
+# YEoRcuWROZcInxY+ak51tJ3xTR3QlwrW48bJu7Wo0iYi2FE+wVb2YFvKN2LvWJxQ
+# 4aq1ilH/OiWgD8hjN3a3ezJSksN3dqwMg1M55R+y7/4G72vlOwGW72LZc3WanQAM
+# cw+9jhK905tW3koX24JaOQUhLv1ZzyyueI4VUBXuBLS0p5RunenswpXN7hbYEs95
+# quCasgE6Uk9Xca1qlMCfAXpZ9LciWUReFfyk7oM7FaEpz0ed9EetXSMD8luzj4lB
+# La+aYClh9XHwbwuBkiXigx4TyAKZDuwDH65mBTetNmUwptSihTIpsUOmYB+LFPXv
+# 4mZ11bt2onqU1/ZnHsmUmDBpbHHJxqhKGRe0K90Vu1hPCoN56dUEQ9IiQ/eGW2zp
+# zVvi59ET1GDZPXvUYGLuMFiZ6/xz51Xym+IAMFbsX9c//a5k1L60v8knYhiR+Wce
+# ba3AUSiZNIXFVQ9actFRAgMBAAGjggJ/MIICezAQBgkrBgEEAYI3FQEEAwIBADAd
+# BgNVHQ4EFgQUSRMN98P8m1nKd+HPrniby6Uw8w4wggEDBgNVHSABAf8EgfgwgfUw
+# gfIGCisGAQQBg/lfAgQwgeMwgYQGCCsGAQUFBwICMHgedgBCAEcASAAgAEMAbwBk
+# AGUAIABhAG4AZAAgAEQAbwBjAHUAbQBlAG4AdAAgAFMAaQBnAG4AaQBuAGcAIABJ
+# AHMAcwB1AGkAbgBnACAAQwBBACAAQwBlAHIAdABpAGYAaQBjAGEAdABlACAAUABv
+# AGwAaQBjAHkwWgYIKwYBBQUHAgEWTmh0dHBzOi8vcGtpLmJnaC1pbnRyYS5uZXQv
+# Y3BzL0JHSC1TdGFuZGFyZElzc3VpbmdDUC1Db2RlYW5kRG9jdW1lbnRTaWduaW5n
+# LnBkZjA1BgNVHSUELjAsBggrBgEFBQcDAwYIKwYBBQUHAwkGCisGAQQBgjcUAgEG
+# CisGAQQBgjcKAwwwGQYJKwYBBAGCNxQCBAweCgBTAHUAYgBDAEEwCwYDVR0PBAQD
+# AgGGMBIGA1UdEwEB/wQIMAYBAf8CAQAwHwYDVR0jBBgwFoAUOU8AyEV5+DFlQyvK
+# HF1cifPs+KYwUAYDVR0fBEkwRzBFoEOgQYY/aHR0cDovL3BraS5iZ2gtaW50cmEu
+# bmV0L2NybC9CR0hTdGFuZGFyZFJvb3RDQVJTQTQwOTZTSEEyNTYuY3JsMFsGCCsG
+# AQUFBwEBBE8wTTBLBggrBgEFBQcwAoY/aHR0cDovL3BraS5iZ2gtaW50cmEubmV0
+# L2FpYS9CR0hTdGFuZGFyZFJvb3RDQVJTQTQwOTZTSEEyNTYuY3J0MA0GCSqGSIb3
+# DQEBCwUAA4ICAQCUVpwjlOewn05pi1HhO/ceIv0CZpQcKzsEIL2HMS8fmjwA2vb3
+# x04dPWK3f1oFLCbXl0yuclSqZeFBGq8/RT3tLB9pwT3ffEgHjp2YvkLr7TIfKcLe
+# 7H4bLegfGBegrKQmDHC7CNbvuF4Mk29nakqccNYHOrK6fo/xkOqFjDDLlCLaVVn2
+# DhWBcuQAN77ITFe+hkFuGIcR25TwCCpSL6f6LDaa0ZfRFevwXdyz9aeeMKaZS5Hj
+# q4iNgKJH7U3S8n3TBNpEzMnqJGMUfVg27IrVF1swOzNGtERHm1cUpYIk8+45CwfI
+# quej05waIqwRgAJO+5xbTqqAS6NbmzGm2ijEUzOarInAxZ216fCMTMOZsHhMdZ3M
+# 2mXplCRN9/RuENXuf9OY1XY5sCByMaZXxyTzNmM4PV9d++C9vleZXtHQm4IFD0Co
+# E/Rpx2c5zibY6emctkr2FwTkficznHEKF0U07iAgLdTZHxu7KosDre+mSqIoXOwQ
+# ToSQCkfvw3V9HTltdx83NcUQFQAAQHuabvUQnPNUT8KmHZm47PhZy8Jo/ZIE+bbZ
+# N+p/IkINCAJwONLuuhPkW9/rNWHvAd5jchScAF1hT2T+ncvBcaywM01lstxW6Duo
+# Y0OfqVTubTmvu1ezw88vp5qpJbgWfrdeJk5ZIhF3ZnznbNxrj5n+Unn0rjCCCKww
+# ggcUoAMCAQICExMAAAAQ/9RfhbDcNocAAAAAABAwDQYJKoZIhvcNAQELBQAwgcUx
+# CzAJBgNVBAYTAkRFMRAwDgYDVQQIEwdTYWNoc2VuMRAwDgYDVQQHEwdGcmVpdGFs
+# MSAwHgYDVQQKExdCR0ggRWRlbHN0YWhsd2Vya2UgR21iSDEsMCoGA1UECxMjQ29y
+# cG9yYXRlIElUIC0gQ2VydGlmaWNhdGUgU2VydmljZXMxQjBABgNVBAMTOUJHSCBD
+# b2RlIGFuZCBEb2N1bWVudCBTaWduaW5nIElzc3VpbmcgQ0EgUlNBIDMwNzIgU0hB
+# LTI1NjAeFw0yNjAzMjYwNzE5NTZaFw0yODAzMjUwNzE5NTZaMBYxFDASBgNVBAMT
+# C01uaWNoLCBBZGFtMIIBojANBgkqhkiG9w0BAQEFAAOCAY8AMIIBigKCAYEAsoYE
+# C86WcNB53nIx6rXaZbArOegShll++ECrXwPDj4Qn/vn+Pcedho6Oyt8d174he4Ar
+# auVj4wPCZEiLfrY8wZy74U8pc5uFF0UGOWWKg5XqsmqCrRDPtY6JmtAlmPMrioUI
+# zMVGxWxsN/psb+KNZNrbvxWusSTf5X120VBztvHH5jZB2tmsEhMFtsZKpchGSj+u
+# TqahscLbI0M7g8otca5+3uGZeJ0UB1y22/g5Xq/hem/eggK4NPdu5GQUw1SO+bzj
+# xqr5sc/TWxrqdeT5UJ/7EdF/Y+q57Zdpmo4heKwe0+V7fj64rphjFiXqYYLWGWd+
+# 9jC//pO1kLNpW8McdHLVFxctO+zOJLBG7MV52pbUv1Y+dSAEpL8H1xWtCjwGCmbn
+# Ix9pZjaOnK24tlJ4IsTjXgf6bmykpT61ma8sANMa0X2K6/eJEqp4aJrDPUEvz1Jf
+# Bp4VILJGXndImxo5a3hjTO/V1O0O4GUXACNhgustVhp7jNCevllJLu/7oOwlAgMB
+# AAGjggRBMIIEPTA9BgkrBgEEAYI3FQcEMDAuBiYrBgEEAYI3FQiCy6hAgrTpX4aB
+# nzmBtK8kh7KtbhyC4KYGgvywewIBZAIBETATBgNVHSUEDDAKBggrBgEFBQcDAzAO
+# BgNVHQ8BAf8EBAMCB4AwGwYJKwYBBAGCNxUKBA4wDDAKBggrBgEFBQcDAzAdBgNV
+# HQ4EFgQU5Q+l/z48mBbWUXsQsCHBwxFnOrMwHwYDVR0jBBgwFoAUSRMN98P8m1nK
+# d+HPrniby6Uw8w4wggFlBgNVHR8EggFcMIIBWDCCAVSgggFQoIIBTIaB92xkYXA6
+# Ly8vQ049QkdIJTIwQ29kZSUyMGFuZCUyMERvY3VtZW50JTIwU2lnbmluZyUyMElz
+# c3VpbmclMjBDQSUyMFJTQSUyMDMwNzIlMjBTLTA0MDY0LENOPXN6ZnRsc2Nhc3Jz
+# YTAzLENOPUNEUCxDTj1QdWJsaWMlMjBLZXklMjBTZXJ2aWNlcyxDTj1TZXJ2aWNl
+# cyxDTj1Db25maWd1cmF0aW9uLERDPWJnaCxEQz1pbnRyYT9jZXJ0aWZpY2F0ZVJl
+# dm9jYXRpb25MaXN0P2Jhc2U/b2JqZWN0Q2xhc3M9Y1JMRGlzdHJpYnV0aW9uUG9p
+# bnSGUGh0dHA6Ly9wa2kuYmdoLWludHJhLm5ldC9jcmwvQkdIQ29kZWFuZERvY3Vt
+# ZW50U2lnbmluZ0lzc3VpbmdDQVJTQTMwNzJTSEEyNTYuY3JsMIIBiwYIKwYBBQUH
+# AQEEggF9MIIBeTCB6AYIKwYBBQUHMAKGgdtsZGFwOi8vL0NOPUJHSCUyMENvZGUl
+# MjBhbmQlMjBEb2N1bWVudCUyMFNpZ25pbmclMjBJc3N1aW5nJTIwQ0ElMjBSU0El
+# MjAzMDcyJTIwUy0wNDA2NCxDTj1BSUEsQ049UHVibGljJTIwS2V5JTIwU2Vydmlj
+# ZXMsQ049U2VydmljZXMsQ049Q29uZmlndXJhdGlvbixEQz1iZ2gsREM9aW50cmE/
+# Y0FDZXJ0aWZpY2F0ZT9iYXNlP29iamVjdENsYXNzPWNlcnRpZmljYXRpb25BdXRo
+# b3JpdHkwXAYIKwYBBQUHMAKGUGh0dHA6Ly9wa2kuYmdoLWludHJhLm5ldC9haWEv
+# QkdIQ29kZWFuZERvY3VtZW50U2lnbmluZ0lzc3VpbmdDQVJTQTMwNzJTSEEyNTYu
+# Y3J0MC4GCCsGAQUFBzABhiJodHRwOi8vb2NzcC5wa2kuYmdoLWludHJhLm5ldC9v
+# Y3NwMDMGA1UdEQQsMCqgKAYKKwYBBAGCNxQCA6AaDBhhbW5pY2hAYmdoLWVkZWxz
+# dGFobC5jb20wTQYJKwYBBAGCNxkCBEAwPqA8BgorBgEEAYI3GQIBoC4ELFMtMS01
+# LTIxLTg1NDg5MzY2Mi0yMjUzOTAzNDcwLTk0MTgzOTg4MC0yMzY0MA0GCSqGSIb3
+# DQEBCwUAA4IBgQBZrSjlosMUSWsJAOc05Z0Yhwbhp3jhmVRyo6v2iX5RLQm/Y42b
+# A5VdhStM2m0S7oPqyV9DdfLKGHCsmuJ2+irnWlW6aUzg1bBu0g29FfA2C8tCMtF5
+# FRznFQK/erjfq24ZdUZSjBvy8SzpIUgPX+wba10OrMVA/bWZ8R7zuYuHlEzbbpKo
+# NKMdS3bYsygr1XeYXPQh0j44klu5PCjDYHwBrPuBzmziEPVol3xmRtMretDHMSvU
+# cvS5iY2YgOWLPhNMduSHGOnost9z3E7FqPAVq/6CP4iJDICE4cxfeCC8Hyjk+DGs
+# cwFXUajaAfmmqQxE0TdaFyeR44LSredie5XPZq5oiSpEXJ9P/ZTQDSGfKI0vweXc
+# fAc0QikVhJAuKtW1KdhH1YONqkLjW+Uz929QQta2Z3SSnFC1jXZ5TgmuphvbmqdL
+# BzsUG9p6wtN2yTHYJK0S3XWKzikH4nwOqfXF+WCZCRRkMUdAUP/4MZZzhhl7x8vj
+# YJxyTQwc/lLado0xggY3MIIGMwIBATCB3TCBxTELMAkGA1UEBhMCREUxEDAOBgNV
+# BAgTB1NhY2hzZW4xEDAOBgNVBAcTB0ZyZWl0YWwxIDAeBgNVBAoTF0JHSCBFZGVs
+# c3RhaGx3ZXJrZSBHbWJIMSwwKgYDVQQLEyNDb3Jwb3JhdGUgSVQgLSBDZXJ0aWZp
+# Y2F0ZSBTZXJ2aWNlczFCMEAGA1UEAxM5QkdIIENvZGUgYW5kIERvY3VtZW50IFNp
+# Z25pbmcgSXNzdWluZyBDQSBSU0EgMzA3MiBTSEEtMjU2AhMTAAAAEP/UX4Ww3DaH
+# AAAAAAAQMA0GCWCGSAFlAwQCAQUAoIGEMBgGCisGAQQBgjcCAQwxCjAIoAKAAKEC
+# gAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwG
+# CisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEILwKL/Wr5F0y1tWjxzg0zl99srex
+# nfKcFLITUVbGrL2QMA0GCSqGSIb3DQEBAQUABIIBgDlb4mApiTN3NxyKN5L8twTH
+# ORY3u41P8r0c9zBTgh2EDQOxuuFL3CVYZYCSODjPdt5l/p5U9glIIADag6SR1qYB
+# 7xSB6fR7mF7bz7XpwlVdg+kUwcADEv9RhuCGj2Ul608wCF9rgOIWupHwnkLEdwqn
+# P63wg5LJdh/9f5eJHWGqTRz7bMwB339n8GO2P4yiZbErqFQW9o3Zgr0OKo8wCpLv
+# p13hEgwpF9VWZBRjqonI4RjVNmpB2GlDuiAI+xzKsvjzzN/OlO2tA8lyM1MODP1O
+# ym1rYA+yMp+80+gBBAb54Gil80o8iuMsJEFTvc5KDnLfgftE40IvAhfDyH9x16g+
+# UzcZX+e+fNnDYKitHi1MOBs7eWCAlUIngw3t6/aIJhbI+SxWwla8lfYIx3+FXebT
+# IvBP0meuYAAKsnkj1XLChELSKv3/JB6dk49PjpNJKP/ixyUpSholaX8aHYrtfzIr
+# ta5fQ9XclWM+qPlYaAkKSEB2J8LsKce3exwMMfY8BKGCAyMwggMfBgkqhkiG9w0B
+# CQYxggMQMIIDDAIBATBqMFUxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9TZWN0aWdv
+# IExpbWl0ZWQxLDAqBgNVBAMTI1NlY3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcg
+# Q0EgUjQxAhEA507yVbBQT/rbpt/3/IujFTANBglghkgBZQMEAgIFAKB5MBgGCSqG
+# SIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDcxNjExMzcy
+# M1owPwYJKoZIhvcNAQkEMTIEMGnc2jawWcU31m1CUxgloVA8dZtreN95GDyXoQKb
+# FQgwoDcgWoO9tujrzzvCekrvLjANBgkqhkiG9w0BAQEFAASCAgCe8sGMMsGT5IwN
+# InRMV17l3oQYZWvkBl4shoaGnLpaff0Z/mDYWs0U37w88/zjPWOgwomFDJ7gHyXh
+# 799o6DHQl7NrdXnlYDh0QQK8rsjhF2YQMwyog9H0Lcan1W3UBQTfcyVhD7nvcwkf
+# FGufLQIIDrykX69NoapdSWFhbP6ousE05ROdSchRIoRZMEWjDCaFgoUJlUE+vJzc
+# mTbcxutu3cyf+/OFzIuDBUfNXK0Xst+xViiiUj9IfezkFwemu6gG5/xiL2dQ9BLB
+# 4LdXHGG8hFlqfzNGhNtbHPsPx6QDVbPtZcx4DYMndulo8qUcR3HDfqUDLeUvQLhq
+# dV4PLnM5tNLb61miRcFbnrl8+Q27xamiMaJ3W9UmFg14eBDIqo7g1pFUXRG7SPIX
+# BV6j4OHFydvWlJuUegyTRR6OB5o7a258tIOXHGDL9og4PC0tt8WFX6B7YoBtYhRE
+# HCcltb+VZmvEfY7M+Bh5ztA2yyIDb/rVhgZBttyWvQeVXgNAfRC/FvC4jiSSAtvv
+# 5AahSra58YImppgTaU3LXqX9CYKwRHOznZ7XsfLtkPpPMX+FTYKrnyXk4VcnXUtj
+# Db4MdX4j4md7goYEo2JE7SezuvK5+QcDWxwqeRL3d/OaY0sP3RyBGeG6IXelcVyr
+# pfks6peE8iI1W5GARY63wMxJ7lK8Wg==
+# SIG # End signature block
