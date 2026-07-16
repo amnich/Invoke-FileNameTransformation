@@ -253,6 +253,15 @@ $script:Translations = @{
         'Tr_Replace'             = 'Zamiana tekstu'
         'Tr_Case'                = 'Zmiana wielkości liter'
         'Tr_Pad'                 = 'Dopełnienie znakami'
+        'Tr_Number'              = 'Operacja matematyczna'
+        'Tr_Operation'           = 'Operacja:'
+        'Tr_OpAdd'               = 'Dodaj'
+        'Tr_OpSubtract'          = 'Odejmij'
+        'Tr_OpMultiply'          = 'Pomnóż'
+        'Tr_OpDivide'            = 'Podziel'
+        'Tr_OpRound'             = 'Zaokrąglij (miejsca dziesiętne)'
+        'Tr_OpValue'             = 'Wartość:'
+        'Tr_NumFormat'           = 'Format liczby (opcjonalnie, np. F2, D5):'
         'Tr_PosStart'            = 'Pozycja startowa (0 = początek):'
         'Tr_CharCount'           = 'Liczba znaków:'
         'Tr_FmtIn'               = 'Format wejściowy:'
@@ -277,12 +286,17 @@ $script:Translations = @{
         'Err_PadChar'            = 'Podaj znak dopełnienia.'
         'Err_TargetLen'          = 'Długość musi być > 0.'
         'Err_SelTransform'       = 'Wybierz typ transformacji.'
+        'Err_SelOperation'       = 'Wybierz operację.'
+        'Err_NumValue'           = 'Podaj prawidłową wartość liczbową.'
+        'Err_DivZero'            = 'Nie można dzielić przez zero.'
+        'Err_NotNumeric'         = 'Wartość pola nie jest liczbą'
         'Disp_Substr'            = 'Wycinanie: od pozycji'
         'Disp_Chars'             = 'znaków'
         'Disp_Date'              = 'Data:'
         'Disp_Replace'           = 'Zamiana:'
         'Disp_Case'              = 'Wielkość liter:'
         'Disp_Pad'               = 'Dopełnienie:'
+        'Disp_Number'            = 'Matematyka:'
         'Disp_To'                = 'do'
         'Title_AddMapping'       = 'Dodaj mapowanie'
         'Lbl_MapName'            = 'Nazwa mapowania'
@@ -500,6 +514,15 @@ $script:Translations = @{
         'Tr_Replace'             = 'Text replacement'
         'Tr_Case'                = 'Case change'
         'Tr_Pad'                 = 'Padding'
+        'Tr_Number'              = 'Math operation'
+        'Tr_Operation'           = 'Operation:'
+        'Tr_OpAdd'               = 'Add'
+        'Tr_OpSubtract'          = 'Subtract'
+        'Tr_OpMultiply'          = 'Multiply'
+        'Tr_OpDivide'            = 'Divide'
+        'Tr_OpRound'             = 'Round (decimal places)'
+        'Tr_OpValue'             = 'Value:'
+        'Tr_NumFormat'           = 'Number format (optional, e.g. F2, D5):'
         'Tr_PosStart'            = 'Start position (0 = start):'
         'Tr_CharCount'           = 'Number of characters:'
         'Tr_FmtIn'               = 'Input format:'
@@ -524,12 +547,17 @@ $script:Translations = @{
         'Err_PadChar'            = 'Provide pad character.'
         'Err_TargetLen'          = 'Length must be > 0.'
         'Err_SelTransform'       = 'Select transformation type.'
+        'Err_SelOperation'       = 'Select an operation.'
+        'Err_NumValue'           = 'Provide a valid numeric value.'
+        'Err_DivZero'            = 'Cannot divide by zero.'
+        'Err_NotNumeric'         = 'Field value is not numeric'
         'Disp_Substr'            = 'Trimming: from pos'
         'Disp_Chars'             = 'chars'
         'Disp_Date'              = 'Date:'
         'Disp_Replace'           = 'Replace:'
         'Disp_Case'              = 'Case:'
         'Disp_Pad'               = 'Pad:'
+        'Disp_Number'            = 'Math:'
         'Disp_To'                = 'to'
         'Title_AddMapping'       = 'Add mapping'
         'Lbl_MapName'            = 'Mapping name'
@@ -743,6 +771,15 @@ $script:Translations = @{
         'Tr_Replace'             = 'Textersatz'
         'Tr_Case'                = 'Groß-/Kleinschreibung'
         'Tr_Pad'                 = 'Auffüllen'
+        'Tr_Number'              = 'Rechenoperation'
+        'Tr_Operation'           = 'Operation:'
+        'Tr_OpAdd'               = 'Addieren'
+        'Tr_OpSubtract'          = 'Subtrahieren'
+        'Tr_OpMultiply'          = 'Multiplizieren'
+        'Tr_OpDivide'            = 'Dividieren'
+        'Tr_OpRound'             = 'Runden (Dezimalstellen)'
+        'Tr_OpValue'             = 'Wert:'
+        'Tr_NumFormat'           = 'Zahlenformat (optional, z. B. F2, D5):'
         'Tr_PosStart'            = 'Startposition (0 = Anfang):'
         'Tr_CharCount'           = 'Anzahl der Zeichen:'
         'Tr_FmtIn'               = 'Eingabeformat:'
@@ -767,12 +804,17 @@ $script:Translations = @{
         'Err_PadChar'            = 'Geben Sie das Füllzeichen an.'
         'Err_TargetLen'          = 'Länge muss > 0 sein.'
         'Err_SelTransform'       = 'Wählen Sie den Transformationstyp.'
+        'Err_SelOperation'       = 'Wählen Sie eine Operation.'
+        'Err_NumValue'           = 'Geben Sie einen gültigen numerischen Wert an.'
+        'Err_DivZero'            = 'Division durch Null nicht möglich.'
+        'Err_NotNumeric'         = 'Feldwert ist keine Zahl'
         'Disp_Substr'            = 'Kürzen: ab Pos'
         'Disp_Chars'             = 'Zeichen'
         'Disp_Date'              = 'Datum:'
         'Disp_Replace'           = 'Ersatz:'
         'Disp_Case'              = 'Gr./Kl.:'
         'Disp_Pad'               = 'Auffüllen:'
+        'Disp_Number'            = 'Rechnen:'
         'Disp_To'                = 'bis'
         'Title_AddMapping'       = 'Zuordnung hinzufügen'
         'Lbl_MapName'            = 'Zuordnungsname'
@@ -1649,6 +1691,34 @@ function ApplyTransforms([string]$value, $transforms) {
                     if ($t.Side -eq 'Left') { $value = $value.PadLeft($w, $ch) }
                     else { $value = $value.PadRight($w, $ch) }
                 }
+                'Number' {
+                    $numeric = 0.0
+                    if (-not [double]::TryParse($value, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$numeric)) {
+                        throw "$(T 'Err_NotNumeric'): '$value'"
+                    }
+                    switch ($t.Operation) {
+                        'Add' { $numeric = $numeric + $t.Value }
+                        'Subtract' { $numeric = $numeric - $t.Value }
+                        'Multiply' { $numeric = $numeric * $t.Value }
+                        'Divide' {
+                            if ($t.Value -eq 0) { throw (T 'Err_DivZero') }
+                            $numeric = $numeric / $t.Value
+                        }
+                        'Round' { $numeric = [Math]::Round($numeric, [int]$t.Value) }
+                    }
+                    $value = if ($t.Format) {
+                        if ($t.Format -match '^[DXdx]\d*$') {
+                            # D/X format specifiers require an integral type in .NET
+                            ([long][Math]::Round($numeric)).ToString($t.Format, [Globalization.CultureInfo]::InvariantCulture)
+                        }
+                        else {
+                            $numeric.ToString($t.Format, [Globalization.CultureInfo]::InvariantCulture)
+                        }
+                    }
+                    else {
+                        $numeric.ToString([Globalization.CultureInfo]::InvariantCulture)
+                    }
+                }
             }
         }
         catch {
@@ -1690,7 +1760,8 @@ function ShowTransformDialog($field) {
             (T 'Tr_DateFormat'),
             (T 'Tr_Replace'),
             (T 'Tr_Case'),
-            (T 'Tr_Pad')
+            (T 'Tr_Pad'),
+            (T 'Tr_Number')
         ))
     $form.Controls.Add($cboType)
 
@@ -1768,6 +1839,19 @@ function ShowTransformDialog($field) {
                     $paramLabels[2].Text = (T 'Tr_TargetLen'); $paramLabels[2].Visible = $true
                     $paramControls[2].Visible = $true
                 }
+                5 {
+                    # Number / Math
+                    $paramLabels[0].Text = (T 'Tr_Operation'); $paramLabels[0].Visible = $true
+                    $cboParam1.Items.AddRange(@(
+                            (T 'Tr_OpAdd'), (T 'Tr_OpSubtract'), (T 'Tr_OpMultiply'), (T 'Tr_OpDivide'), (T 'Tr_OpRound')
+                        ))
+                    $cboParam1.SelectedIndex = 0
+                    $cboParam1.Visible = $true
+                    $paramLabels[1].Text = (T 'Tr_OpValue'); $paramLabels[1].Visible = $true
+                    $paramControls[1].Text = '0'; $paramControls[1].Visible = $true
+                    $paramLabels[2].Text = (T 'Tr_NumFormat'); $paramLabels[2].Visible = $true
+                    $paramControls[2].Visible = $true
+                }
             }
         })
 
@@ -1835,6 +1919,24 @@ function ShowTransformDialog($field) {
                         [pscustomobject]@{
                             Type = 'Pad'; Side = $side; PadChar = $ch; Width = $width
                             Display = "$(T 'Disp_Pad') '$ch' $sideText $(T 'Disp_To') $width $(T 'Disp_Chars')"
+                        }
+                    }
+                    5 {
+                        # Number / Math
+                        if ($cboParam1.SelectedIndex -lt 0) { throw (T 'Err_SelOperation') }
+                        $operation = @('Add', 'Subtract', 'Multiply', 'Divide', 'Round')[$cboParam1.SelectedIndex]
+                        $operationText = [string]$cboParam1.SelectedItem
+                        $valueText = $paramControls[1].Text.Trim()
+                        $numValue = 0.0
+                        if (-not [double]::TryParse($valueText, [Globalization.NumberStyles]::Float, [Globalization.CultureInfo]::InvariantCulture, [ref]$numValue)) {
+                            throw (T 'Err_NumValue')
+                        }
+                        if ($operation -eq 'Divide' -and $numValue -eq 0) { throw (T 'Err_DivZero') }
+                        $numFormat = $paramControls[2].Text.Trim()
+                        $displaySuffix = if ($numFormat) { " ($numFormat)" } else { '' }
+                        [pscustomobject]@{
+                            Type = 'Number'; Operation = $operation; Value = $numValue; Format = $numFormat
+                            Display = "$(T 'Disp_Number') $operationText $numValue$displaySuffix"
                         }
                     }
                     default { throw (T 'Err_SelTransform') }
