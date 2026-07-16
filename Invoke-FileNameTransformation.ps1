@@ -57,11 +57,28 @@ if (-not (Get-Variable -Name AppRoot -Scope Script -ErrorAction SilentlyContinue
 }
 $script:ConfigPath = Join-Path $script:AppRoot 'config.json'
 $script:CurrentLanguage = 'PL'
+$script:Config = [pscustomobject][ordered]@{
+    Version         = 2
+    Language        = 'PL'
+    CustomTypeRules = @()
+}
+$coreModulePath = Join-Path $script:AppRoot 'FileNameTransformation.Core.psm1'
+if (-not (Test-Path -LiteralPath $coreModulePath -PathType Leaf)) {
+    throw "Missing core module: $coreModulePath"
+}
+Import-Module $coreModulePath -Force
 
 if (Test-Path $script:ConfigPath) {
     try {
         Write-Verbose $script:ConfigPath
         $config = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        $script:Config = $config
+        if (-not $script:Config.PSObject.Properties['Version']) {
+            $script:Config | Add-Member -NotePropertyName Version -NotePropertyValue 1
+        }
+        if (-not $script:Config.PSObject.Properties['CustomTypeRules']) {
+            $script:Config | Add-Member -NotePropertyName CustomTypeRules -NotePropertyValue @()
+        }
         if ($config.Language -in @('PL', 'EN', 'DE')) {
             $script:CurrentLanguage = $config.Language
             Write-Information "Using saved language: $script:CurrentLanguage"
@@ -185,6 +202,15 @@ $script:Translations = @{
         'Type_Date_8'            = 'Data (YYYY-MM-DDTHH:MM:SS lub YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Liczba'
         'Type_Text'              = 'Tekst'
+        'Type_Integer'           = 'Liczba całkowita'
+        'Type_Decimal'           = 'Liczba dziesiętna'
+        'Type_DateTime'          = 'Data/czas'
+        'Type_Guid'              = 'GUID'
+        'Type_Version'           = 'Wersja'
+        'Type_Ambiguous'         = 'Niejednoznaczny'
+        'Type_Auto'              = 'Automatyczny'
+        'Txt_DataType'           = 'Typ danych:'
+        'Err_ResolveAmbiguous'    = 'Wybierz jednoznaczny typ danych dla pola:'
         'Hint_SelectField'       = 'Wybierz pole, nadaj mu nazwę biznesową i dodaj transformacje lub mapowania.'
         'Hint_AddElements'       = 'Dodaj elementy nazwy docelowej za pomocą przycisków poniżej.'
         'Prefix_Source'          = 'Źródło'
@@ -409,6 +435,15 @@ $script:Translations = @{
         'Type_Date_8'            = 'Date (YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Number'
         'Type_Text'              = 'Text'
+        'Type_Integer'           = 'Integer'
+        'Type_Decimal'           = 'Decimal'
+        'Type_DateTime'          = 'Date/time'
+        'Type_Guid'              = 'GUID'
+        'Type_Version'           = 'Version'
+        'Type_Ambiguous'         = 'Ambiguous'
+        'Type_Auto'              = 'Auto'
+        'Txt_DataType'           = 'Data type:'
+        'Err_ResolveAmbiguous'    = 'Select an unambiguous data type for field:'
         'Hint_SelectField'       = 'Select a field, give it a business name, and add transformations or mappings.'
         'Hint_AddElements'       = 'Add destination name elements using buttons below.'
         'Prefix_Source'          = 'Source'
@@ -629,6 +664,15 @@ $script:Translations = @{
         'Type_Date_8'            = 'Datum (YYYY-MM-DDTHH:MM:SS oder YYYY-MM-DDTHH:MM:SSZ)'
         'Type_Num'               = 'Zahl'
         'Type_Text'              = 'Text'
+        'Type_Integer'           = 'Ganzzahl'
+        'Type_Decimal'           = 'Dezimalzahl'
+        'Type_DateTime'          = 'Datum/Uhrzeit'
+        'Type_Guid'              = 'GUID'
+        'Type_Version'           = 'Version'
+        'Type_Ambiguous'         = 'Mehrdeutig'
+        'Type_Auto'              = 'Automatisch'
+        'Txt_DataType'           = 'Datentyp:'
+        'Err_ResolveAmbiguous'    = 'Wählen Sie einen eindeutigen Datentyp für das Feld:'
         'Hint_SelectField'       = 'Wählen Sie ein Feld aus, geben Sie ihm einen Geschäftsnamen und fügen Sie Transformationen oder Zuordnungen hinzu.'
         'Hint_AddElements'       = 'Fügen Sie Zielnamenselemente mit den Schaltflächen unten hinzu.'
         'Prefix_Source'          = 'Quelle'
@@ -943,7 +987,7 @@ $xamlTemplate = @'
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="#"        Binding="{Binding DisplayIndex}" Width="30"/>
                     <DataGridTextColumn Header="{t:Col_Sample}" Binding="{Binding Sample}"       Width="*"/>
-                    <DataGridTextColumn Header="{t:Col_Type}"      Binding="{Binding DetectedType}" Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Type}"      Binding="{Binding EffectiveType}" Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Name}"    Binding="{Binding Name}"         Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Role}"     Binding="{Binding Role}"         Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Source}"   Binding="{Binding Source}"       Width="72"/>
@@ -966,6 +1010,8 @@ $xamlTemplate = @'
                     <ComboBoxItem Content="{t:Role_Const}"/>
                     <ComboBoxItem Content="{t:Role_Ignore}"/>
                   </ComboBox>
+                                    <TextBlock Text="{t:Txt_DataType}" Margin="0,4,0,2"/>
+                                    <ComboBox x:Name="FieldType" DisplayMemberPath="Label"/>
                   <Button x:Name="FieldApply" Content="{t:Btn_ApplyField}" Margin="4,6,4,4"/>
 
                   <Separator Margin="4,8"/>
@@ -1192,57 +1238,123 @@ function UpdateUI {
 #region Tokenization and Analysis
 
 function Tokens([string]$name) {
-    $result = @()
     $pattern = if ($TokenRegex -and $TokenRegex.Text) { $TokenRegex.Text } else { '(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)' }
-    $matches_ = [regex]::Matches($name, $pattern)
-    foreach ($m in $matches_) {
-        $result += [pscustomobject]@{
-            Value       = $m.Value
-            IsSeparator = $m.Groups['sep'].Success
-        }
-    }
-    $result
+    Get-FNTTokens -Name $name -Pattern $pattern -CustomTypeRules @($script:Config.CustomTypeRules)
 }
 
-function TokenType([string]$v) {
-    if ($v -match '^\d{8}$') { return (T 'Type_Date_1') } #Date in YYYYMMDD format
-    if ($v -match '^\d{4}[-_.]\d{2}[-_.]\d{2}$') { return (T 'Type_Date_2') } #Date in YYYY-MM-DD, YYYY.MM.DD, or YYYY_MM_DD format
-    if ($v -match '^\d{2}[-_.]\d{2}[-_.]\d{4}$') { return (T 'Type_Date_3') } #date in DD-MM-YYYY, DD.MM.YYYY, or DD_MM_YYYY format
-    if ($v -match '^\d{4}[-_.]\d{2}$') { return (T 'Type_Date_4') } #date in YYYY-MM format
-    if ($v -match '^\d{2}[-_.]\d{4}$') { return (T 'Type_Date_5') } #date in MM-YYYY format`
-    if ($v -match '^\d{6}$') { return (T 'Type_Date_6') } #date in YYMMDD or DDMMYY format
-    if ($v -match '^\d{2}[-_.]\d{2}$') { return (T 'Type_Date_7') } #date in MM-DD or DD-MM format
-    if ($v -match '^\d{4}[-_.]\d{2}[-_.]\d{2}[Tt]\d{2}:\d{2}:\d{2}(Z|[+-]\d{2}:\d{2})?$') { return (T 'Type_Date_8') } #YYYY-MM-DDTHH:MM:SS or YYYY-MM-DDTHH:MM:SSZ format
-    if ($v -match '^\d+$') { return (T 'Type_Num') }
-    return (T 'Type_Text')
+function TokenTypeLabel([string]$typeId) {
+    switch ($typeId) {
+        'Integer' { return (T 'Type_Integer') }
+        'Decimal' { return (T 'Type_Decimal') }
+        'DateTime' { return (T 'Type_DateTime') }
+        'Guid' { return (T 'Type_Guid') }
+        'Version' { return (T 'Type_Version') }
+        'Ambiguous' { return (T 'Type_Ambiguous') }
+        default { return (T 'Type_Text') }
+    }
+}
+
+function ConvertLegacyTypeId([string]$typeLabel) {
+    if ([string]::IsNullOrWhiteSpace($typeLabel)) { return 'Text' }
+    if ($typeLabel -match 'Ambig|Niejedno|Mehrdeu') { return 'Ambiguous' }
+    if ($typeLabel -match 'GUID') { return 'Guid' }
+    if ($typeLabel -match 'Version|Wersja') { return 'Version' }
+    if ($typeLabel -match 'Decimal|dzies|Dezimal') { return 'Decimal' }
+    if ($typeLabel -match 'Date|Data|Datum') { return 'DateTime' }
+    if ($typeLabel -match 'Number|Liczba|Zahl') { return 'Integer' }
+    return 'Text'
+}
+
+function GetFieldTypeOptions($field) {
+    $options = @(
+        [pscustomobject]@{ Id = 'Auto'; Format = $null; Label = (T 'Type_Auto') }
+        [pscustomobject]@{ Id = 'Text'; Format = $null; Label = (T 'Type_Text') }
+        [pscustomobject]@{ Id = 'Integer'; Format = $null; Label = (T 'Type_Integer') }
+        [pscustomobject]@{ Id = 'Decimal'; Format = $null; Label = (T 'Type_Decimal') }
+        [pscustomobject]@{ Id = 'Guid'; Format = $null; Label = (T 'Type_Guid') }
+        [pscustomobject]@{ Id = 'Version'; Format = $null; Label = (T 'Type_Version') }
+    )
+
+    foreach ($candidate in @($field.CandidateTypes)) {
+        if ($candidate.TypeId -eq 'DateTime') {
+            $label = "$(T 'Type_DateTime') ($($candidate.Format))"
+            $options += [pscustomobject]@{ Id = 'DateTime'; Format = [string]$candidate.Format; Label = $label }
+        }
+        elseif ([string]$candidate.TypeId -like 'Custom:*') {
+            $options += [pscustomobject]@{
+                Id     = [string]$candidate.TypeId
+                Format = $null
+                Label  = [string]$candidate.TypeId
+            }
+        }
+    }
+
+    $seen = @{}
+    @($options | Where-Object {
+            $key = "$($_.Id)|$($_.Format)"
+            if ($seen.ContainsKey($key)) { return $false }
+            $seen[$key] = $true
+            return $true
+        })
+}
+
+function GetEffectiveTypeLabel($field) {
+    if (-not $field.SelectedTypeId -or $field.SelectedTypeId -eq 'Auto') {
+        return (TokenTypeLabel ([string]$field.DetectedTypeId))
+    }
+    if ($field.SelectedTypeId -eq 'DateTime' -and $field.SelectedFormat) {
+        return "$(T 'Type_DateTime') ($($field.SelectedFormat))"
+    }
+    if ([string]$field.SelectedTypeId -like 'Custom:*') {
+        return [string]$field.SelectedTypeId
+    }
+    return (TokenTypeLabel ([string]$field.SelectedTypeId))
+}
+
+function GetResolvedFieldType($field) {
+    if ($field.SelectedTypeId -and $field.SelectedTypeId -ne 'Auto') {
+        return [pscustomobject]@{
+            TypeId = [string]$field.SelectedTypeId
+            Format = [string]$field.SelectedFormat
+        }
+    }
+
+    $format = $null
+    if ($field.DetectedTypeId -eq 'DateTime') {
+        $dateCandidates = @($field.CandidateTypes | Where-Object { $_.TypeId -eq 'DateTime' })
+        if ($dateCandidates.Count -eq 1) {
+            $format = [string]$dateCandidates[0].Format
+        }
+    }
+    return [pscustomobject]@{
+        TypeId = [string]$field.DetectedTypeId
+        Format = $format
+    }
+}
+
+function ValidateFieldValues([hashtable]$values) {
+    foreach ($field in $script:Fields) {
+        if ($field.IsVirtual -or -not $values.ContainsKey($field.Name)) { continue }
+        $resolvedType = GetResolvedFieldType $field
+        if (-not (Test-FNTValueType -Value ([string]$values[$field.Name]) -TypeId $resolvedType.TypeId `
+                -Format $resolvedType.Format -CustomTypeRules @($script:Config.CustomTypeRules))) {
+            $formatText = if ($resolvedType.Format) { " ($($resolvedType.Format))" } else { '' }
+            throw "$($field.Name): '$($values[$field.Name])' != $($resolvedType.TypeId)$formatText"
+        }
+    }
 }
 
 function ParseNameByTemplate([string]$name, $templateParts) {
-    $result = @{}
-    $currentString = $name
-
-    for ($i = 0; $i -lt $templateParts.Count; $i++) {
-        $p = $templateParts[$i]
-        
-        if ($p.IsSeparator) {
-            $idx = $currentString.IndexOf($p.Value)
-            if ($idx -lt 0) {
-                throw "Brak separatora '$($p.Value)' w nazwie pliku."
-            }
-            $value = $currentString.Substring(0, $idx)
-            if ($i -gt 0) {
-                $result[$i - 1] = $value
-            }
-            $currentString = $currentString.Substring($idx + $p.Value.Length)
+    $fieldTypes = @{}
+    foreach ($field in $script:Fields) {
+        if (-not $field.IsVirtual -and $field.PartIndex -ge 0) {
+            $fieldTypes[[int]$field.PartIndex] = GetResolvedFieldType $field
         }
     }
-    
-    $lastPartIndex = $templateParts.Count - 1
-    if (-not $templateParts[$lastPartIndex].IsSeparator) {
-        $result[$lastPartIndex] = $currentString
-    }
-    
-    return $result
+    $pattern = if ($TokenRegex -and $TokenRegex.Text) { $TokenRegex.Text } else { '(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)' }
+    $match = Match-FNTNamePattern -Name $name -PatternTokens @($templateParts) -TokenizerPattern $pattern `
+        -FieldTypes $fieldTypes -CustomTypeRules @($script:Config.CustomTypeRules)
+    return $match.Values
 }
 
 function AnalyzePatterns {
@@ -1287,7 +1399,7 @@ function BuildPatternList {
         $parts = Tokens $f.BaseName
         $sig = ($parts | ForEach-Object {
                 if ($_.IsSeparator) { 'S:' + $_.Value + '|' }
-                else { 'T:' + (TokenType $_.Value) + '|' }
+            else { 'T:' + $_.DetectedTypeId + '|' }
             }) -join ''
         $raw += [pscustomobject]@{ Signature = $sig; Parts = $parts; File = $f }
     }
@@ -1297,13 +1409,16 @@ function BuildPatternList {
         $sample = $g.Group[0]
         $all = $g.Group
         $labels = @()
+        $fieldInferences = @{}
         for ($i = 0; $i -lt $sample.Parts.Count; $i++) {
             if ($sample.Parts[$i].IsSeparator) {
                 $labels += $sample.Parts[$i].Value
                 continue
             }
             $uniqueValues = @($all | ForEach-Object { $_.Parts[$i].Value } | Select-Object -Unique)
-            $kind = TokenType $sample.Parts[$i].Value
+            $inference = Get-FNTFieldInference -Tokens @($all | ForEach-Object { $_.Parts[$i] })
+            $fieldInferences[$i] = $inference
+            $kind = TokenTypeLabel $inference.DetectedTypeId
             $labels += if ($uniqueValues.Count -eq 1) { "[$($uniqueValues[0])]" } else { "<$kind>" }
         }
         $script:Patterns += [pscustomobject]@{
@@ -1312,6 +1427,7 @@ function BuildPatternList {
             Count     = $g.Count
             Items     = $all
             Signature = $g.Name
+            FieldInferences = $fieldInferences
         }
     }
 
@@ -1334,10 +1450,12 @@ function SetPattern($pattern) {
         if ($parts[$i].IsSeparator) { continue }
 
         $uniqueValues = @($pattern.Items | ForEach-Object { $_.Parts[$i].Value } | Select-Object -Unique)
-        $type = TokenType $parts[$i].Value
+        $inference = $pattern.FieldInferences[$i]
+        $typeId = $inference.DetectedTypeId
+        $type = TokenTypeLabel $typeId
 
         # Auto-detect role
-        $role = if ($type -like 'Dat*') { (T 'Role_Date') }
+        $role = if ($typeId -eq 'DateTime') { (T 'Role_Date') }
         elseif ($uniqueValues.Count -eq 1) { (T 'Role_Const') }
         else { (T 'Role_Value') }
 
@@ -1353,6 +1471,12 @@ function SetPattern($pattern) {
                 DisplayIndex = "$($script:Fields.Count + 1)"
                 Sample       = $parts[$i].Value
                 DetectedType = $type
+                DetectedTypeId = $typeId
+                CandidateTypes = @($inference.CandidateTypes)
+                IsAmbiguous  = [bool]$inference.IsAmbiguous
+                SelectedTypeId = 'Auto'
+                SelectedFormat = $null
+                EffectiveType = $type
                 Name         = $name
                 Role         = $role
                 IsVirtual    = $false
@@ -1920,6 +2044,11 @@ function FullBuildPreview {
     if (-not $script:OutputParts.Count) {
         throw (T 'Err_AddDest')
     }
+    foreach ($field in $script:Fields) {
+        if (-not $field.IsVirtual -and $field.IsAmbiguous -and $field.SelectedTypeId -eq 'Auto') {
+            throw "$(T 'Err_ResolveAmbiguous') $($field.Name)"
+        }
+    }
 
     $src = $SourcePath.Text.Trim()
     $dst = $DestinationPath.Text.Trim()
@@ -1984,6 +2113,7 @@ function FullBuildPreview {
                     }
                 }
             }
+            ValidateFieldValues $values
 
             # 2. Apply mappings (in order)
             foreach ($m in $script:Mappings) {
@@ -2172,7 +2302,9 @@ function SaveProfile {
         })
 
     $obj = [ordered]@{
+        SchemaVersion = 2
         Name          = $name
+        TokenRegex    = $TokenRegex.Text
         Fields        = $fieldsData
         Mappings      = @($script:Mappings)
         OutputParts   = @($script:OutputParts)
@@ -2218,6 +2350,28 @@ function LoadProfile([string]$path) {
             $di = if ($_.IsVirtual) { 'V' } else { "$($_.PartIndex)" }
             $_ | Add-Member -NotePropertyName 'DisplayIndex' -NotePropertyValue $di -Force
         }
+        if (-not $_.PSObject.Properties['DetectedTypeId']) {
+            $_ | Add-Member -NotePropertyName 'DetectedTypeId' -NotePropertyValue (ConvertLegacyTypeId ([string]$_.DetectedType)) -Force
+        }
+        if (-not $_.PSObject.Properties['CandidateTypes']) {
+            $_ | Add-Member -NotePropertyName 'CandidateTypes' -NotePropertyValue @() -Force
+        }
+        if (-not $_.PSObject.Properties['IsAmbiguous']) {
+            $_ | Add-Member -NotePropertyName 'IsAmbiguous' -NotePropertyValue ($_.DetectedTypeId -eq 'Ambiguous') -Force
+        }
+        if (-not $_.PSObject.Properties['SelectedTypeId']) {
+            $_ | Add-Member -NotePropertyName 'SelectedTypeId' -NotePropertyValue 'Auto' -Force
+        }
+        if (-not $_.PSObject.Properties['SelectedFormat']) {
+            $_ | Add-Member -NotePropertyName 'SelectedFormat' -NotePropertyValue $null -Force
+        }
+        $_.DetectedType = TokenTypeLabel ([string]$_.DetectedTypeId)
+        if (-not $_.PSObject.Properties['EffectiveType']) {
+            $_ | Add-Member -NotePropertyName 'EffectiveType' -NotePropertyValue (GetEffectiveTypeLabel $_) -Force
+        }
+        else {
+            $_.EffectiveType = GetEffectiveTypeLabel $_
+        }
 
         $script:Fields.Add($_)
     }
@@ -2238,6 +2392,9 @@ function LoadProfile([string]$path) {
     # Restore extension settings
     $KeepExtension.IsChecked = $p.KeepExtension
     $NewExtension.Text = if ($p.NewExtension) { $p.NewExtension } else { '' }
+    if ($p.PSObject.Properties['TokenRegex'] -and -not [string]::IsNullOrWhiteSpace([string]$p.TokenRegex)) {
+        $TokenRegex.Text = [string]$p.TokenRegex
+    }
 
     # Refresh UI bindings
     $FieldGrid.ItemsSource = $script:Fields
@@ -2287,6 +2444,13 @@ $FieldGrid.Add_SelectionChanged({
             # Select matching role item
             $FieldRole.SelectedItem = @($FieldRole.Items | Where-Object { $_.Content -eq $f.Role })[0]
             if (-not $FieldRole.SelectedItem) { $FieldRole.SelectedIndex = 0 }
+            $typeOptions = @(GetFieldTypeOptions $f)
+            $FieldType.ItemsSource = $typeOptions
+            $selectedType = @($typeOptions | Where-Object {
+                    $_.Id -eq $f.SelectedTypeId -and [string]$_.Format -eq [string]$f.SelectedFormat
+                } | Select-Object -First 1)
+            if ($selectedType.Count -gt 0) { $FieldType.SelectedItem = $selectedType[0] }
+            else { $FieldType.SelectedIndex = 0 }
             # Show transforms for this field
             $TransformList.ItemsSource = $null
             if ($f.Transforms) {
@@ -2305,6 +2469,10 @@ $FieldApply.Add_Click({
 
             $f.Name = $newName
             $f.Role = [string]$FieldRole.SelectedItem.Content
+            $selectedType = $FieldType.SelectedItem
+            $f.SelectedTypeId = if ($selectedType) { [string]$selectedType.Id } else { 'Auto' }
+            $f.SelectedFormat = if ($selectedType) { [string]$selectedType.Format } else { $null }
+            $f.EffectiveType = GetEffectiveTypeLabel $f
 
             # Update references in OutputParts and Mappings when name changed
             if ($oldName -ne $newName) {
@@ -2603,8 +2771,9 @@ $LanguageSelector.Add_SelectionChanged({
         if ($LanguageSelector.SelectedItem) {
             $tag = $LanguageSelector.SelectedItem.Tag
             if ($tag -and $tag -ne $script:CurrentLanguage) {
-                $config = @{ Language = $tag }
-                $config | ConvertTo-Json | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
+                $script:Config.Language = $tag
+                $script:Config.Version = 2
+                $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
                 [Windows.MessageBox]::Show((T 'Msg_ConfirmRestart'), (T 'Title_Info'), 'OK', 'Information') | Out-Null
             }
         }
