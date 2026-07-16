@@ -73,7 +73,8 @@ $script:Translations = @{
         'Source_Folder'          = 'Folder źródłowy:'
         'Btn_Browse'             = 'Wybierz...'
         'Dest_Folder'            = 'Folder wynikowy:'
-        'Chk_Recursive'          = 'Skanuj także podfoldery (zachowaj strukturę)'
+        'Chk_Recursive'          = 'Skanuj także podfoldery'
+        'Chk_PreserveStructure'  = 'Zachowaj strukturę folderów w folderze wynikowym'
         'Tab_Profile'            = '1. Profil'
         'Saved_Profiles'         = 'Zapisane profile'
         'Btn_New'                = 'Nowy'
@@ -290,7 +291,8 @@ $script:Translations = @{
         'Source_Folder'          = 'Source folder:'
         'Btn_Browse'             = 'Browse...'
         'Dest_Folder'            = 'Destination folder:'
-        'Chk_Recursive'          = 'Scan subfolders (keep structure)'
+        'Chk_Recursive'          = 'Scan subfolders'
+        'Chk_PreserveStructure'  = 'Preserve folder structure in destination folder'
         'Tab_Profile'            = '1. Profile'
         'Saved_Profiles'         = 'Saved profiles'
         'Btn_New'                = 'New'
@@ -503,7 +505,8 @@ $script:Translations = @{
         'Source_Folder'          = 'Quellordner:'
         'Btn_Browse'             = 'Durchsuchen...'
         'Dest_Folder'            = 'Zielordner:'
-        'Chk_Recursive'          = 'Unterordner scannen (Struktur beibehalten)'
+        'Chk_Recursive'          = 'Unterordner scannen'
+        'Chk_PreserveStructure'  = 'Ordnerstruktur im Zielordner beibehalten'
         'Tab_Profile'            = '1. Profil'
         'Saved_Profiles'         = 'Gespeicherte Profile'
         'Btn_New'                = 'Neu'
@@ -805,6 +808,7 @@ $xamlTemplate = @'
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <Label Grid.Row="0" Content="{t:Source_Folder}"/>
           <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1"/>
@@ -814,6 +818,9 @@ $xamlTemplate = @'
           <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}"/>
           <CheckBox x:Name="Recursive" Grid.Row="2" Grid.Column="1"
                     Content="{t:Chk_Recursive}"
+                    Margin="4,2,4,4" VerticalAlignment="Center"/>
+          <CheckBox x:Name="PreserveFolderStructure" Grid.Row="3" Grid.Column="1"
+                    Content="{t:Chk_PreserveStructure}" IsChecked="True"
                     Margin="4,2,4,4" VerticalAlignment="Center"/>
         </Grid>
       </GroupBox>
@@ -1987,7 +1994,7 @@ function FullBuildPreview {
             if ($ext -and -not $ext.StartsWith('.')) { $ext = '.' + $ext }
 
             # Build destination path
-            $relativeDir = if ($Recursive.IsChecked) { Split-Path $row.SourceRelative -Parent } else { '' }
+            $relativeDir = if ($PreserveFolderStructure.IsChecked) { Split-Path $row.SourceRelative -Parent } else { '' }
             $destDir = if ($relativeDir) { Join-Path $dst $relativeDir } else { $dst }
             $row.DestinationPath = Join-Path $destDir ($name + $ext)
             $row.DestinationRelative = $row.DestinationPath.Substring($dst.TrimEnd('\').Length).TrimStart('\')
@@ -2583,8 +2590,8 @@ SetStatus (T 'Status_Ready')
 # SIG # Begin signature block
 # MIIzcgYJKoZIhvcNAQcCoIIzYzCCM18CAQExDzANBglghkgBZQMEAgEFADB5Bgor
 # BgEEAYI3AgEEoGswaTA0BgorBgEEAYI3AgEeMCYCAwEAAAQQH8w7YFlLCE63JNLG
-# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCDCsdiaDDXmmKGr
-# 5m2mVADEV4brEKV65k1gT6YERkwcrKCCLJEwggaCMIIEaqADAgECAhA2wrC9fBs6
+# KX7zUQIBAAIBAAIBAAIBAAIBADAxMA0GCWCGSAFlAwQCAQUABCALuxGbAedVGuhH
+# rFY4Pc5qP1lglIcnRIA6tdm2jBS6kqCCLJEwggaCMIIEaqADAgECAhA2wrC9fBs6
 # 56Oz3TbLyXVoMA0GCSqGSIb3DQEBDAUAMIGIMQswCQYDVQQGEwJVUzETMBEGA1UE
 # CBMKTmV3IEplcnNleTEUMBIGA1UEBxMLSmVyc2V5IENpdHkxHjAcBgNVBAoTFVRo
 # ZSBVU0VSVFJVU1QgTmV0d29yazEuMCwGA1UEAxMlVVNFUlRydXN0IFJTQSBDZXJ0
@@ -2829,31 +2836,31 @@ SetStatus (T 'Status_Ready')
 # Z25pbmcgSXNzdWluZyBDQSBSU0EgMzA3MiBTSEEtMjU2AhMTAAAAEP/UX4Ww3DaH
 # AAAAAAAQMA0GCWCGSAFlAwQCAQUAoIGEMBgGCisGAQQBgjcCAQwxCjAIoAKAAKEC
 # gAAwGQYJKoZIhvcNAQkDMQwGCisGAQQBgjcCAQQwHAYKKwYBBAGCNwIBCzEOMAwG
-# CisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEILwKL/Wr5F0y1tWjxzg0zl99srex
-# nfKcFLITUVbGrL2QMA0GCSqGSIb3DQEBAQUABIIBgDlb4mApiTN3NxyKN5L8twTH
-# ORY3u41P8r0c9zBTgh2EDQOxuuFL3CVYZYCSODjPdt5l/p5U9glIIADag6SR1qYB
-# 7xSB6fR7mF7bz7XpwlVdg+kUwcADEv9RhuCGj2Ul608wCF9rgOIWupHwnkLEdwqn
-# P63wg5LJdh/9f5eJHWGqTRz7bMwB339n8GO2P4yiZbErqFQW9o3Zgr0OKo8wCpLv
-# p13hEgwpF9VWZBRjqonI4RjVNmpB2GlDuiAI+xzKsvjzzN/OlO2tA8lyM1MODP1O
-# ym1rYA+yMp+80+gBBAb54Gil80o8iuMsJEFTvc5KDnLfgftE40IvAhfDyH9x16g+
-# UzcZX+e+fNnDYKitHi1MOBs7eWCAlUIngw3t6/aIJhbI+SxWwla8lfYIx3+FXebT
-# IvBP0meuYAAKsnkj1XLChELSKv3/JB6dk49PjpNJKP/ixyUpSholaX8aHYrtfzIr
-# ta5fQ9XclWM+qPlYaAkKSEB2J8LsKce3exwMMfY8BKGCAyMwggMfBgkqhkiG9w0B
+# CisGAQQBgjcCARUwLwYJKoZIhvcNAQkEMSIEIBrL1PyJ8Ujhu0FrEf/i971NCxb1
+# 2V+z6P6wBtF9/YwbMA0GCSqGSIb3DQEBAQUABIIBgHgv6EO/Y/AdG1O2OQ3qSKWL
+# i/G1DPDt4sTyBIiSepFU6QLbs9ltlgq1+FYqR1zaOqBP3lLdl/lCxzH6ACIzTOGu
+# tlhfFXdU2/s33+YJcw9gasnYsB60qrZtRipHBE9rV9ieBBIjf/vCY2qXaK2Ftfcu
+# 5MaXh0+E6cuL5WfNLc6k13PHzqkRkNXIVTpr5w/VXRWeJDl9FpERfYGOys+hTq33
+# oTjPcqP1V8ipBE31uiVUoj00OSHmrfA/BkSF+iffW09SlOp8eLIoQ5DiEwUqMnL3
+# oZQ8OBeRAppNKglxStns/bwRVfIyiztysv+uf/tMTRj7WuzowEbc/G4meHmfHkNN
+# NZ4YhFOCPhvHwSdANF/zbusK+NaKj+Ksq0XWvZGA15BBnMwWjHTJvmleG+JbJIlO
+# LuChKaKp2J9G/xgMF0gNfIdZSsqhvyw+hJJ1W6fEYkis+ZKR+X0iG8SxMUXHFAdF
+# 1ziwZwyI4ho6Lac/1tObMkYhoQh3PCkQotKid6ltpqGCAyMwggMfBgkqhkiG9w0B
 # CQYxggMQMIIDDAIBATBqMFUxCzAJBgNVBAYTAkdCMRgwFgYDVQQKEw9TZWN0aWdv
 # IExpbWl0ZWQxLDAqBgNVBAMTI1NlY3RpZ28gUHVibGljIFRpbWUgU3RhbXBpbmcg
 # Q0EgUjQxAhEA507yVbBQT/rbpt/3/IujFTANBglghkgBZQMEAgIFAKB5MBgGCSqG
-# SIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDcxNjExMzcy
-# M1owPwYJKoZIhvcNAQkEMTIEMGnc2jawWcU31m1CUxgloVA8dZtreN95GDyXoQKb
-# FQgwoDcgWoO9tujrzzvCekrvLjANBgkqhkiG9w0BAQEFAASCAgCe8sGMMsGT5IwN
-# InRMV17l3oQYZWvkBl4shoaGnLpaff0Z/mDYWs0U37w88/zjPWOgwomFDJ7gHyXh
-# 799o6DHQl7NrdXnlYDh0QQK8rsjhF2YQMwyog9H0Lcan1W3UBQTfcyVhD7nvcwkf
-# FGufLQIIDrykX69NoapdSWFhbP6ousE05ROdSchRIoRZMEWjDCaFgoUJlUE+vJzc
-# mTbcxutu3cyf+/OFzIuDBUfNXK0Xst+xViiiUj9IfezkFwemu6gG5/xiL2dQ9BLB
-# 4LdXHGG8hFlqfzNGhNtbHPsPx6QDVbPtZcx4DYMndulo8qUcR3HDfqUDLeUvQLhq
-# dV4PLnM5tNLb61miRcFbnrl8+Q27xamiMaJ3W9UmFg14eBDIqo7g1pFUXRG7SPIX
-# BV6j4OHFydvWlJuUegyTRR6OB5o7a258tIOXHGDL9og4PC0tt8WFX6B7YoBtYhRE
-# HCcltb+VZmvEfY7M+Bh5ztA2yyIDb/rVhgZBttyWvQeVXgNAfRC/FvC4jiSSAtvv
-# 5AahSra58YImppgTaU3LXqX9CYKwRHOznZ7XsfLtkPpPMX+FTYKrnyXk4VcnXUtj
-# Db4MdX4j4md7goYEo2JE7SezuvK5+QcDWxwqeRL3d/OaY0sP3RyBGeG6IXelcVyr
-# pfks6peE8iI1W5GARY63wMxJ7lK8Wg==
+# SIb3DQEJAzELBgkqhkiG9w0BBwEwHAYJKoZIhvcNAQkFMQ8XDTI2MDcxNjExNDcz
+# MVowPwYJKoZIhvcNAQkEMTIEMJginuIUbbNqQyDfzOYMiHuhrlfArIfg9pn6m110
+# aOPjm5JpPzPIlscuXykhzEaEdTANBgkqhkiG9w0BAQEFAASCAgBwlqdClhrYQXr3
+# ksfWCyGdNlDXc6PmRfz9u0zE0UB9kZEi0wvgWB6wrqZ2vMAs7bREvjpdjGl/VPtE
+# eUsccgWphZApctGUla2dOm9n7nu+FCWXRS4YD8JsSRDIBrHIgjRE3lAZDyyklCyp
+# WVXdFVcx9CX5bRnssrnmuFf67U7lRwMo5MKs/e3Jghvd7WyXrkrXNy60a5zlBeFi
+# X3LoA6Jz3WClWWsC7xEhDevfc/eH9yHohPMngIgV15Lfd3zJjmqiBwKP0msjqfU3
+# ZoNXO0el+p3Mp0ZxxkNWecVz4qUr1pPu2uZ3HfhwcPfX+n2vr92orJIVAQUOHc2S
+# WrqZAMXlN1BEJi4SA+V5f4jKQm0VJ+8kNiVJ9T5h/5Xt0l0kDxgo5FXXGl4SuRda
+# 4MUlnKJq6wbWpbE+88tIxZU6YtLWdIdaWALGSYzmgA4wZZs9ymDdvZXebSfACypA
+# nC9lgtLPLCW3UiVTaqVWMIiMNzZ+pDH/wcYeus2XMggFNfTio2/XjFQ1d8q3QzBA
+# R2tUzlQREjOT2hFG2uPfLpKOqO5VYQGOYHuQjXF+ZEdp5MaJkqYY2ufbdKBCyPzg
+# SB560mRwN6d6mjHz5gaBJ6qLFO1MwSa/Xl6nsgn586wMGw6E7Zyltvi31TXKWlpu
+# YQBiojkZA3bPAQ5cKF2E8y4Z1ILWbA==
 # SIG # End signature block
