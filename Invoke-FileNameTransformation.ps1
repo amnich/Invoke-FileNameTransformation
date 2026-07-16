@@ -1,27 +1,34 @@
 ﻿#requires -Version 5.1
 <#
 .SYNOPSIS
-    GUI utility for advanced file renaming and structural transformation.
+    Launches the File Name Transformer GUI for bulk renaming and copying.
 
 .DESCRIPTION
-    FileNameTransformer.GUI is a WPF-based PowerShell script that enables bulk renaming and copying of files. 
-    It parses source filenames using structural patterns, applies value mappings (via CSV dictionaries), 
-    and performs text transformations (such as Regex replaces, casing adjustments, and substrings) to generate 
-    target filenames based on user-defined templates. The tool offers a live preview grid to catch potential 
-    collisions or missing data before executing any file operations. 
+    FileNameTransformer.GUI is a WPF-based PowerShell script that enables bulk renaming and copying of files.
+    It parses source filenames using structural patterns, applies value mappings from CSV dictionaries,
+    and performs text transformations such as casing changes, substrings, replacements, padding, and date formatting.
+    The script then builds target filenames from user-defined templates and offers a preview grid to validate
+    results before copying or moving files.
 
     Features:
     - Multi-language UI (Polish, English, German).
     - Saveable and reusable profiles in JSON format.
     - Pattern-based source file parsing.
     - External CSV-based mapping support.
-    
+    - Preview and validation for collisions, missing values, and invalid characters.
+    - Copy or move execution mode with audit logging.
+
 .EXAMPLE
     .\Invoke-FileNameTransformation.ps1
-    Launches the application GUI.
+    Launches the application GUI from the current folder.
+
+.EXAMPLE
+    powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
+    Starts the script in a single-threaded apartment (required for WPF).
 
 .NOTES
-    Requires PowerShell 5.1 and must be executed in STA (Single-Threaded Apartment) mode.
+    Requires Windows PowerShell 5.1 and an STA host. Profiles, logs, and the language configuration are stored
+    under the current user's AppData folder, with fallback to the script directory or temporary folder when needed.
 #>
 
 [CmdletBinding()]

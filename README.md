@@ -1,40 +1,46 @@
 # Invoke-FileNameTransformation
 
-Invoke-FileNameTransformation is a powerful GUI-based PowerShell utility for advanced file renaming and transformation. It enables users to perform structural filename modifications, utilize mappings from CSV files, and preview all changes safely before copying or renaming files.
+Invoke-FileNameTransformation is a GUI-based PowerShell utility for advanced file renaming and transformation. It helps users restructure filenames, enrich them with CSV-based mappings, and preview all changes safely before copying or moving files.
 
 ## Features
 
-- **Pattern Parsing**: Automatically break down incoming filenames into structured parts (e.g. `[Prefix]-[ID]-[Name]`).
-- **Data Mapping**: Connect external CSV dictionaries to map extracted values to new outputs (e.g. converting a country code into a full country name).
-- **Text Transformations**: Apply regex replacements, substring extractions, padding, casing modifications, and date formatting directly to any part of the filename.
-- **Advanced Output Templates**: Construct your target filenames flexibly by mixing static text, extracted properties, and mapped data.
-- **Live Preview & Validation**: Safely preview your renaming operations in a data grid. The application verifies constraints, checks for potential file collisions, and flags missing data elements prior to execution.
-- **Saveable Profiles**: Export and load your complex mapping configurations as JSON profiles for seamless reuse.
-- **Multi-language Interface**: Built-in support for Polish, English, and German interfaces.
+- **Pattern Parsing**: Automatically break down incoming filenames into structured parts (for example, `[Prefix]-[ID]-[Name]`).
+- **Data Mapping**: Connect external CSV dictionaries to replace extracted values with richer output data.
+- **Text Transformations**: Apply substring extraction, padding, casing changes, replacements, and date formatting to any part of the filename.
+- **Output Templates**: Build target filenames from static text, extracted fields, and mapped values.
+- **Live Preview & Validation**: Preview the resulting file names in a grid and detect collisions, missing values, or invalid characters before execution.
+- **Saveable Profiles**: Export and reload complex configurations as JSON profiles.
+- **Multi-language Interface**: Built-in support for Polish, English, and German.
+- **Copy or Move Execution**: Run the transformation in copy or move mode and keep an audit log.
 
 ## Requirements
 
 - Windows PowerShell 5.1
-- Windows OS (Requires WPF and WinForms capability)
+- Windows OS with WPF and WinForms support
 
 ## Usage
 
-You can launch the tool simply by running the script in PowerShell. It requires STA (Single-Threaded Apartment) mode, which is standard for WPF-based scripts.
+Run the script from PowerShell in the repository folder:
 
 ```powershell
-Invoke-FileNameTransformation
+.\Invoke-FileNameTransformation.ps1
 ```
 
-If you are invoking it from a command prompt or shortcut, you should force STA mode:
+For a command prompt, shortcut, or automation scenario, start it explicitly in STA mode:
 
 ```cmd
-powershell.exe -STA -File ".\Invoke-FileNameTransformation.ps1"
+powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
 ```
 
-## How It Works
+## Typical Workflow
 
-1. **Source Selection**: Pick the folder containing the files you want to process, and select an output destination.
-2. **Define Patterns**: Specify how the source filenames are currently structured using variables.
-3. **Map and Transform**: Define virtual fields that transform data, or use mapping tables from external CSVs.
-4. **Construct Template**: Build your output filename template using the defined fields.
-5. **Execute**: Review the live preview grid and execute the renaming operation. The application copies the files with their new names.
+1. **Select folders**: Choose the source folder and output destination.
+2. **Analyze names**: Review the detected filename structures and choose a pattern.
+3. **Define fields and mappings**: Create fields, apply transforms, and load CSV lookup files.
+4. **Build the output name**: Assemble the target filename from fields, text, and separators.
+5. **Preview and execute**: Review the results and run the copy or move operation.
+
+## Notes
+
+- Profiles, logs, and the language configuration are stored under the user's AppData folder.
+- If AppData is unavailable, the script falls back to the script directory or a temporary folder.
