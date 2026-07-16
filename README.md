@@ -1,6 +1,6 @@
-# FileNameTransformer
+# Invoke-FileNameTransformation
 
-FileNameTransformer is a powerful GUI-based PowerShell utility for advanced file renaming and transformation. It enables users to perform structural filename modifications, utilize mappings from CSV files, and preview all changes safely before copying or renaming files.
+Invoke-FileNameTransformation is a powerful GUI-based PowerShell utility for advanced file renaming and transformation. It enables users to perform structural filename modifications, utilize mappings from CSV files, and preview all changes safely before copying or renaming files.
 
 ## Features
 
@@ -22,13 +22,13 @@ FileNameTransformer is a powerful GUI-based PowerShell utility for advanced file
 You can launch the tool simply by running the script in PowerShell. It requires STA (Single-Threaded Apartment) mode, which is standard for WPF-based scripts.
 
 ```powershell
-.\FileNameTransformer.GUI.ps1
+Invoke-FileNameTransformation
 ```
 
 If you are invoking it from a command prompt or shortcut, you should force STA mode:
 
 ```cmd
-powershell.exe -STA -File ".\FileNameTransformer.GUI.ps1"
+powershell.exe -STA -File ".\Invoke-FileNameTransformation.ps1"
 ```
 
 ## How It Works
