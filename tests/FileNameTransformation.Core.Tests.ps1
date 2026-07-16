@@ -23,6 +23,17 @@ Describe 'Get-FNTLexicalTokens' {
         { Get-FNTLexicalTokens -Name 'Report_1' -Pattern '(?<value>[A-Za-z]+)|(?<sep>_)' } |
             Should -Throw '*position 7*'
     }
+
+    It 'attaches a stable diagnostic code and position' {
+        try {
+            Get-FNTLexicalTokens -Name 'Report_1' -Pattern '(?<value>[A-Za-z]+)|(?<sep>_)'
+            throw 'Expected tokenizer failure.'
+        }
+        catch {
+            $_.Exception.Data['FNTCode'] | Should -Be 'Tokenizer.IncompleteCoverage'
+            $_.Exception.Data['Position'] | Should -Be 7
+        }
+    }
 }
 
 Describe 'Get-FNTTypeCandidates' {
@@ -146,7 +157,7 @@ Describe 'Match-FNTNamePattern' {
 
     It 'rejects a changed separator with its token position' {
         { Match-FNTNamePattern -Name 'Invoice-200_Ready' -PatternTokens $patternTokens -TokenizerPattern $defaultPattern } |
-            Should -Throw "*token 2*expected separator '_'*found '-'*"
+            Should -Throw "*token 2, offset 7*expected separator '_'*found '-'*"
     }
 
     It 'rejects a missing structural segment' {
@@ -158,6 +169,234 @@ Describe 'Match-FNTNamePattern' {
         $fieldTypes = @{ 2 = [pscustomobject]@{ TypeId = 'Integer'; Format = $null } }
 
         { Match-FNTNamePattern -Name 'Invoice_ABC_Ready' -PatternTokens $patternTokens -TokenizerPattern $defaultPattern -FieldTypes $fieldTypes } |
-            Should -Throw "*token 3*'ABC'*not type 'Integer'*"
+            Should -Throw "*token 3, offset 8*'ABC'*not type 'Integer'*"
+    }
+}
+
+Describe 'Configuration compatibility' {
+    It 'adds versioned defaults to a legacy language-only configuration' {
+        $config = ConvertTo-FNTConfig ([pscustomobject]@{ Language = 'EN' })
+
+        $config.Version | Should -Be 2
+        $config.Language | Should -Be 'EN'
+        @($config.CustomTypeRules).Count | Should -Be 0
+    }
+
+    It 'preserves custom rules and unknown settings when changing language' {
+        $source = [pscustomobject]@{
+            Version         = 2
+            Language        = 'EN'
+            CustomTypeRules = @([pscustomobject]@{ Id = 'Code'; Pattern = '^X\d+$' })
+            FutureSetting   = 'keep-me'
+        }
+
+        $updated = Set-FNTConfigLanguage -Config $source -Language 'DE'
+
+        $updated.Language | Should -Be 'DE'
+        $updated.CustomTypeRules[0].Id | Should -Be 'Code'
+        $updated.FutureSetting | Should -Be 'keep-me'
+        $source.Language | Should -Be 'EN'
+    }
+
+    It 'preserves custom rules through a temporary configuration file update' {
+        $path = Join-Path $TestDrive 'config.json'
+        [pscustomobject]@{
+            Version         = 2
+            Language        = 'PL'
+            CustomTypeRules = @([pscustomobject]@{ Id = 'Case'; Pattern = '^C-\d+$'; Enabled = $true })
+        } | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path -Encoding UTF8
+
+        $loaded = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $updated = Set-FNTConfigLanguage -Config $loaded -Language 'EN'
+        $updated | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $path -Encoding UTF8
+        $saved = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+
+        $saved.Language | Should -Be 'EN'
+        $saved.CustomTypeRules[0].Id | Should -Be 'Case'
+        $saved.CustomTypeRules[0].Pattern | Should -Be '^C-\d+$'
+    }
+
+    It 'produces the same structural signature after a language change' {
+        $source = [pscustomobject]@{ Language = 'PL'; CustomTypeRules = @() }
+        $polishConfig = ConvertTo-FNTConfig $source
+        $germanConfig = Set-FNTConfigLanguage -Config $polishConfig -Language 'DE'
+
+        $polishTokens = Get-FNTTokens -Name 'Report_2025-01-16_Final' -Pattern $defaultPattern -CustomTypeRules $polishConfig.CustomTypeRules
+        $germanTokens = Get-FNTTokens -Name 'Report_2025-01-16_Final' -Pattern $defaultPattern -CustomTypeRules $germanConfig.CustomTypeRules
+
+        Get-FNTTokenSignature $polishTokens | Should -Be (Get-FNTTokenSignature $germanTokens)
+    }
+}
+
+Describe 'Custom type rule validation' {
+    It 'normalizes valid rules and supplies defaults' {
+        $result = Test-FNTCustomTypeRules @([pscustomobject]@{
+                Id      = 'Department.Code'
+                Pattern = '^[A-Z]{3}-\d{3}$'
+            })
+
+        $result.Errors.Count | Should -Be 0
+        $result.ValidRules.Count | Should -Be 1
+        $result.ValidRules[0].DisplayName | Should -Be 'Department.Code'
+        $result.ValidRules[0].Enabled | Should -BeTrue
+        $result.ValidRules[0].AllowComposite | Should -BeFalse
+    }
+
+    It 'reports invalid IDs, duplicate IDs, empty patterns, and invalid regexes separately' {
+        $result = Test-FNTCustomTypeRules @(
+            [pscustomobject]@{ Id = 'Valid'; Pattern = '^A$' }
+            [pscustomobject]@{ Id = 'valid'; Pattern = '^B$' }
+            [pscustomobject]@{ Id = '123bad'; Pattern = '^C$' }
+            [pscustomobject]@{ Id = 'Empty'; Pattern = '' }
+            [pscustomobject]@{ Id = 'Broken'; Pattern = '[invalid' }
+        )
+
+        $result.ValidRules.Count | Should -Be 1
+        $result.Errors.Count | Should -Be 4
+        @($result.Errors.Message) -join ' ' | Should -Match 'duplicates ID'
+        @($result.Errors.Message) -join ' ' | Should -Match 'invalid ID'
+        @($result.Errors.Message) -join ' ' | Should -Match 'empty pattern'
+        @($result.Errors.Message) -join ' ' | Should -Match 'invalid regex'
+    }
+
+    It 'keeps disabled valid rules but excludes them from recognition' {
+        $validation = Test-FNTCustomTypeRules @([pscustomobject]@{
+                Id          = 'DisabledCode'
+                DisplayName = 'Disabled code'
+                Pattern     = '^ABC$'
+                Enabled     = $false
+            })
+
+        $validation.ValidRules.Count | Should -Be 1
+        $validation.ValidRules[0].Enabled | Should -BeFalse
+        @(Get-FNTTypeCandidates -Value 'ABC' -CustomTypeRules $validation.ValidRules).Count | Should -Be 0
+    }
+
+    It 'uses the configured display name on a custom candidate' {
+        $validation = Test-FNTCustomTypeRules @([pscustomobject]@{
+                Id          = 'DepartmentCode'
+                DisplayName = 'Department code'
+                Pattern     = '^[A-Z]{3}-\d{3}$'
+                Enabled     = $true
+            })
+
+        $candidate = @(Get-FNTTypeCandidates -Value 'ABC-123' -CustomTypeRules $validation.ValidRules |
+            Where-Object TypeId -eq 'Custom:DepartmentCode')[0]
+
+        $candidate.DisplayName | Should -Be 'Department code'
+    }
+}
+
+Describe 'Profile compatibility' {
+    It 'maps localized legacy type labels to stable IDs' -TestCases @(
+        @{ Label = 'Data (yyyyMMdd)'; Expected = 'DateTime' }
+        @{ Label = 'Date (yyyy-MM-dd)'; Expected = 'DateTime' }
+        @{ Label = 'Datum (dd-MM-yyyy)'; Expected = 'DateTime' }
+        @{ Label = 'Liczba'; Expected = 'Integer' }
+        @{ Label = 'Number'; Expected = 'Integer' }
+        @{ Label = 'Zahl'; Expected = 'Integer' }
+        @{ Label = 'Tekst'; Expected = 'Text' }
+    ) {
+        param($Label, $Expected)
+
+        ConvertFrom-FNTLegacyTypeLabel $Label | Should -Be $Expected
+    }
+
+    It 'migrates a legacy profile while preserving workflow data' {
+        $legacy = [pscustomobject]@{
+            Name          = 'Legacy'
+            Fields        = @([pscustomobject]@{
+                    Index        = 2
+                    Name         = 'OrderId'
+                    DetectedType = 'Number'
+                    Transforms   = @([pscustomobject]@{ Type = 'Pad'; Width = 8 })
+                })
+            Mappings      = @([pscustomobject]@{
+                    Name        = 'Orders'
+                    InputField  = 'OrderId'
+                    OutputField = 'Customer'
+                })
+            OutputParts   = @([pscustomobject]@{ Type = 'Field'; Value = 'Customer' })
+            KeepExtension = $true
+            NewExtension  = '.csv'
+        }
+
+        $profile = ConvertTo-FNTProfile $legacy
+
+        $profile.SchemaVersion | Should -Be 2
+        $profile.Fields[0].PartIndex | Should -Be 2
+        $profile.Fields[0].DetectedTypeId | Should -Be 'Integer'
+        $profile.Fields[0].SelectedTypeId | Should -Be 'Auto'
+        $profile.Fields[0].Transforms[0].Type | Should -Be 'Pad'
+        $profile.Mappings[0].InputField | Should -Be 'OrderId'
+        $profile.OutputParts[0].Value | Should -Be 'Customer'
+        $profile.TokenRegex | Should -Not -BeNullOrEmpty
+    }
+
+    It 'round trips a version 2 profile without losing typed settings' {
+        $source = [pscustomobject]@{
+            SchemaVersion = 2
+            Name          = 'Typed'
+            TokenRegex    = '(?<value>[^_]+)|(?<sep>_)'
+            Fields        = @([pscustomobject]@{
+                    PartIndex       = 2
+                    DisplayIndex    = '2'
+                    Name            = 'Created'
+                    DetectedTypeId  = 'Ambiguous'
+                    CandidateTypes  = @(
+                        [pscustomobject]@{ TypeId = 'Integer'; Format = $null }
+                        [pscustomobject]@{ TypeId = 'DateTime'; Format = 'yyMMdd' }
+                    )
+                    IsAmbiguous     = $true
+                    SelectedTypeId  = 'DateTime'
+                    SelectedFormat  = 'yyMMdd'
+                    IsVirtual       = $false
+                    Transforms      = @([pscustomobject]@{ Type = 'DateFormat'; InputFormat = 'yyMMdd'; OutputFormat = 'yyyy-MM-dd' })
+                })
+            Mappings      = @()
+            OutputParts   = @([pscustomobject]@{ Type = 'Field'; Value = 'Created' })
+            KeepExtension = $false
+            NewExtension  = 'txt'
+        }
+        $jsonRoundTrip = $source | ConvertTo-Json -Depth 20 | ConvertFrom-Json
+
+        $profile = ConvertTo-FNTProfile $jsonRoundTrip
+
+        $profile.TokenRegex | Should -Be $source.TokenRegex
+        $profile.Fields[0].SelectedTypeId | Should -Be 'DateTime'
+        $profile.Fields[0].SelectedFormat | Should -Be 'yyMMdd'
+        @($profile.Fields[0].CandidateTypes).Count | Should -Be 2
+        $profile.Fields[0].Transforms[0].OutputFormat | Should -Be 'yyyy-MM-dd'
+        $profile.OutputParts[0].Value | Should -Be 'Created'
+        $profile.KeepExtension | Should -BeFalse
+        $profile.NewExtension | Should -Be 'txt'
+    }
+
+    It 'round trips a version 2 profile through a temporary JSON file' {
+        $path = Join-Path $TestDrive 'Typed.json'
+        $source = [pscustomobject]@{
+            Name          = 'Typed file'
+            Fields        = @([pscustomobject]@{
+                    PartIndex      = 0
+                    Name           = 'OrderId'
+                    DetectedTypeId = 'Integer'
+                    SelectedTypeId = 'Integer'
+                    Transforms     = @([pscustomobject]@{ Type = 'Pad'; Width = 8 })
+                })
+            Mappings      = @([pscustomobject]@{ Name = 'Orders'; InputField = 'OrderId'; OutputField = 'Customer' })
+            OutputParts   = @([pscustomobject]@{ Type = 'Field'; Value = 'Customer' })
+            KeepExtension = $true
+            NewExtension  = ''
+        }
+        ConvertTo-FNTProfile $source | ConvertTo-Json -Depth 20 | Set-Content -LiteralPath $path -Encoding UTF8
+
+        $saved = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
+        $profile = ConvertTo-FNTProfile $saved
+
+        $profile.SchemaVersion | Should -Be 2
+        $profile.Fields[0].SelectedTypeId | Should -Be 'Integer'
+        $profile.Fields[0].Transforms[0].Width | Should -Be 8
+        $profile.Mappings[0].OutputField | Should -Be 'Customer'
+        $profile.OutputParts[0].Value | Should -Be 'Customer'
     }
 }
