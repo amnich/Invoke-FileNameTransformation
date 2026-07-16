@@ -1,4 +1,4 @@
-﻿#requires -Version 5.1
+#requires -Version 5.1
 <#
 .SYNOPSIS
     Launches the File Name Transformer GUI for bulk renaming and copying.
@@ -234,7 +234,8 @@ $script:Translations = @{
         'Tr_Replace'             = 'Zamiana tekstu'
         'Tr_Case'                = 'Zmiana wielkości liter'
         'Tr_Pad'                 = 'Dopełnienie znakami'
-        'Tr_PosStart'            = 'Pozycja startowa (0 = początek):'
+        'Tr_Math'                = 'Matematyka (*N, %N)'
+        'Tr_PosStart'            = 'Pozycja początkowa (0 = początek):'
         'Tr_CharCount'           = 'Liczba znaków:'
         'Tr_FmtIn'               = 'Format wejściowy:'
         'Tr_FmtOut'              = 'Format wyjściowy:'
@@ -249,6 +250,7 @@ $script:Translations = @{
         'Tr_Right'               = 'Z prawej'
         'Tr_PadChar'             = 'Znak dopełnienia:'
         'Tr_TargetLen'           = 'Docelowa długość:'
+        'Tr_MathExpr'            = 'Wyrażenie (np. *2 lub %10):'
         'Btn_Add'                = 'Dodaj'
         'Err_CharCount'          = 'Liczba znaków musi być > 0.'
         'Err_BothFmt'            = 'Podaj oba formaty.'
@@ -258,12 +260,14 @@ $script:Translations = @{
         'Err_PadChar'            = 'Podaj znak dopełnienia.'
         'Err_TargetLen'          = 'Długość musi być > 0.'
         'Err_SelTransform'       = 'Wybierz typ transformacji.'
+        'Err_MathExpr'           = 'Wyrażenie musi zaczynać się od * lub % i zawierać liczbę (np. *2 lub %10).'
         'Disp_Substr'            = 'Wycinanie: od pozycji'
         'Disp_Chars'             = 'znaków'
         'Disp_Date'              = 'Data:'
         'Disp_Replace'           = 'Zamiana:'
         'Disp_Case'              = 'Wielkość liter:'
         'Disp_Pad'               = 'Dopełnienie:'
+        'Disp_Math'              = 'Matematyka:'
         'Disp_To'                = 'do'
         'Title_AddMapping'       = 'Dodaj mapowanie'
         'Lbl_MapName'            = 'Nazwa mapowania'
@@ -467,6 +471,7 @@ $script:Translations = @{
         'Tr_Replace'             = 'Text replacement'
         'Tr_Case'                = 'Case change'
         'Tr_Pad'                 = 'Padding'
+        'Tr_Math'                = 'Math (*N, %N)'
         'Tr_PosStart'            = 'Start position (0 = start):'
         'Tr_CharCount'           = 'Number of characters:'
         'Tr_FmtIn'               = 'Input format:'
@@ -482,6 +487,7 @@ $script:Translations = @{
         'Tr_Right'               = 'Right'
         'Tr_PadChar'             = 'Pad character:'
         'Tr_TargetLen'           = 'Target length:'
+        'Tr_MathExpr'            = 'Expression (e.g. *2 or %10):'
         'Btn_Add'                = 'Add'
         'Err_CharCount'          = 'Number of characters must be > 0.'
         'Err_BothFmt'            = 'Provide both formats.'
@@ -491,12 +497,14 @@ $script:Translations = @{
         'Err_PadChar'            = 'Provide pad character.'
         'Err_TargetLen'          = 'Length must be > 0.'
         'Err_SelTransform'       = 'Select transformation type.'
+        'Err_MathExpr'           = 'Expression must start with * or % and contain a number (e.g. *2 or %10).'
         'Disp_Substr'            = 'Trimming: from pos'
         'Disp_Chars'             = 'chars'
         'Disp_Date'              = 'Date:'
         'Disp_Replace'           = 'Replace:'
         'Disp_Case'              = 'Case:'
         'Disp_Pad'               = 'Pad:'
+        'Disp_Math'              = 'Math:'
         'Disp_To'                = 'to'
         'Title_AddMapping'       = 'Add mapping'
         'Lbl_MapName'            = 'Mapping name'
@@ -696,6 +704,7 @@ $script:Translations = @{
         'Tr_Replace'             = 'Textersatz'
         'Tr_Case'                = 'Groß-/Kleinschreibung'
         'Tr_Pad'                 = 'Auffüllen'
+        'Tr_Math'                = 'Mathematik (*N, %N)'
         'Tr_PosStart'            = 'Startposition (0 = Anfang):'
         'Tr_CharCount'           = 'Anzahl der Zeichen:'
         'Tr_FmtIn'               = 'Eingabeformat:'
@@ -711,6 +720,7 @@ $script:Translations = @{
         'Tr_Right'               = 'Rechts'
         'Tr_PadChar'             = 'Füllzeichen:'
         'Tr_TargetLen'           = 'Ziellänge:'
+        'Tr_MathExpr'            = 'Ausdruck (z.B. *2 oder %10):'
         'Btn_Add'                = 'Hinzufügen'
         'Err_CharCount'          = 'Die Anzahl der Zeichen muss > 0 sein.'
         'Err_BothFmt'            = 'Geben Sie beide Formate an.'
@@ -720,12 +730,14 @@ $script:Translations = @{
         'Err_PadChar'            = 'Geben Sie das Füllzeichen an.'
         'Err_TargetLen'          = 'Länge muss > 0 sein.'
         'Err_SelTransform'       = 'Wählen Sie den Transformationstyp.'
+        'Err_MathExpr'           = 'Ausdruck muss mit * oder % beginnen und eine Zahl enthalten (z.B. *2 oder %10).'
         'Disp_Substr'            = 'Kürzen: ab Pos'
         'Disp_Chars'             = 'Zeichen'
         'Disp_Date'              = 'Datum:'
         'Disp_Replace'           = 'Ersatz:'
         'Disp_Case'              = 'Gr./Kl.:'
         'Disp_Pad'               = 'Auffüllen:'
+        'Disp_Math'              = 'Mathematik:'
         'Disp_To'                = 'bis'
         'Title_AddMapping'       = 'Zuordnung hinzufügen'
         'Lbl_MapName'            = 'Zuordnungsname'
@@ -1536,6 +1548,24 @@ function ApplyTransforms([string]$value, $transforms) {
                     if ($t.Side -eq 'Left') { $value = $value.PadLeft($w, $ch) }
                     else { $value = $value.PadRight($w, $ch) }
                 }
+                'Math' {
+                    # Expression is stored as e.g. '*2' or '%10'
+                    $expr = [string]$t.Expression
+                    $op   = $expr[0]
+                    $num  = [decimal]$expr.Substring(1)
+                    $numVal = [decimal]$value
+                    $result = switch ($op) {
+                        '*' { $numVal * $num }
+                        '%' { $numVal % $num }
+                        default { throw "Unknown math operator: '$op'" }
+                    }
+                    # Preserve integer output when both operands are whole numbers
+                    if ($result -eq [Math]::Truncate($result) -and $value -notmatch '\.') {
+                        $value = [string][long]$result
+                    } else {
+                        $value = [string]$result
+                    }
+                }
             }
         }
         catch {
@@ -1545,7 +1575,7 @@ function ApplyTransforms([string]$value, $transforms) {
     return $value
 }
 
-function ShowTransformDialog {
+function ShowTransformDialog($field = $null) {
     $form = New-Object Windows.Forms.Form
     $form.Text = (T 'Title_AddTransform')
     $form.Size = New-Object Drawing.Size(520, 300)
@@ -1572,6 +1602,16 @@ function ShowTransformDialog {
             (T 'Tr_Case'),
             (T 'Tr_Pad')
         ))
+    # Math is only available for numeric field types
+    $effectiveTypeId = if ($field -and $field.SelectedTypeId -and $field.SelectedTypeId -ne 'Auto') {
+        [string]$field.SelectedTypeId
+    } elseif ($field -and $field.DetectedTypeId) {
+        [string]$field.DetectedTypeId
+    } else { '' }
+    $isMathField = $effectiveTypeId -in @('Integer', 'Decimal')
+    if ($isMathField) {
+        [void]$cboType.Items.Add((T 'Tr_Math'))
+    }
     $form.Controls.Add($cboType)
 
     # 3 parameter rows: label + textbox
@@ -1648,6 +1688,11 @@ function ShowTransformDialog {
                     $paramLabels[2].Text = (T 'Tr_TargetLen'); $paramLabels[2].Visible = $true
                     $paramControls[2].Visible = $true
                 }
+                5 {
+                    # Math
+                    $paramLabels[0].Text = (T 'Tr_MathExpr'); $paramLabels[0].Visible = $true
+                    $paramControls[0].Text = '*2'; $paramControls[0].Visible = $true
+                }
             }
         })
 
@@ -1715,6 +1760,15 @@ function ShowTransformDialog {
                         [pscustomobject]@{
                             Type = 'Pad'; Side = $side; PadChar = $ch; Width = $width
                             Display = "$(T 'Disp_Pad') '$ch' $sideText $(T 'Disp_To') $width $(T 'Disp_Chars')"
+                        }
+                    }
+                    5 {
+                        # Math
+                        $expr = $paramControls[0].Text.Trim()
+                        if ($expr -notmatch '^[*%][0-9]+(\.\d+)?$') { throw (T 'Err_MathExpr') }
+                        [pscustomobject]@{
+                            Type = 'Math'; Expression = $expr
+                            Display = "$(T 'Disp_Math') $expr"
                         }
                     }
                     default { throw (T 'Err_SelTransform') }
@@ -2507,7 +2561,7 @@ $TransformAdd.Add_Click({
         try {
             $f = $FieldGrid.SelectedItem
             if (-not $f) { throw (T 'Err_SelFieldTrans') }
-            $result = ShowTransformDialog
+            $result = ShowTransformDialog $f
             if ($result) {
                 if (-not $f.Transforms) {
                     $f.Transforms = [System.Collections.ArrayList]::new()
