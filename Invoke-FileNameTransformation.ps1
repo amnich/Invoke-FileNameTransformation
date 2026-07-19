@@ -901,12 +901,16 @@ $script:CurrentProfileName = ''
 $script:CurrentPattern = $null
 #endregion
 
+$script:ScreenWidth = [System.Windows.SystemParameters]::PrimaryScreenWidth * 0.9
+$script:ScreenHeight = [System.Windows.SystemParameters]::PrimaryScreenHeight * 0.9
+
 #region XAML Definition
-$xamlTemplate = @'
+$xamlTemplate = @"
+
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="{t:WinTitle}" Height="920" Width="1480"
-        MinHeight="720" MinWidth="1120"
+        Title="{t:WinTitle}" Height="$script:ScreenHeight" Width="$script:ScreenWidth"
+        MinHeight="720" MinWidth="1080"
         WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI" FontSize="13" Background="#F5F7FA">
   <Window.Resources>
@@ -1248,7 +1252,7 @@ $xamlTemplate = @'
     </Grid>
   </DockPanel>
 </Window>
-'@
+"@
 #endregion
 
 #region Window Creation and Element Binding
