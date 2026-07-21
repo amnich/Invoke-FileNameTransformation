@@ -915,10 +915,12 @@ $xamlPath = Join-Path $script:ScriptRoot 'MainWindow.xaml'
 if (-not (Test-Path -LiteralPath $xamlPath -PathType Leaf)) {
     throw "Missing UI template: $xamlPath"
 }
-$xamlTemplate = [System.IO.File]::ReadAllText($xamlPath, [System.Text.UTF8Encoding]::new($false))
+$xamlTemplate = [System.IO.File]::ReadAllText($xamlPath)
 #endregion
 
 #region Window Creation and Element Binding
+$xamlTemplate = $xamlTemplate.Replace('{ScreenWidth}', [string][int]$script:ScreenWidth)
+$xamlTemplate = $xamlTemplate.Replace('{ScreenHeight}', [string][int]$script:ScreenHeight)
 foreach ($key in $script:Translations[$script:CurrentLanguage].Keys) {
     $xamlTemplate = $xamlTemplate.Replace("{t:$key}", $script:Translations[$script:CurrentLanguage][$key])
 }
