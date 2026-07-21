@@ -1,0 +1,345 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{t:WinTitle}" Height="{ScreenHeight}" Width="{ScreenWidth}"
+        MinHeight="600" MinWidth="1000"
+        WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI" FontSize="13" Background="#F5F7FA">
+  <Window.Resources>
+    <Style TargetType="Button">
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="Padding" Value="10,5"/>
+      <Setter Property="MinHeight" Value="30"/>
+    </Style>
+    <Style TargetType="TextBox">
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="Padding" Value="5"/>
+      <Setter Property="VerticalContentAlignment" Value="Center"/>
+    </Style>
+    <Style TargetType="ComboBox">
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="MinHeight" Value="29"/>
+    </Style>
+    <Style TargetType="DataGrid">
+      <Setter Property="Margin" Value="4"/>
+      <Setter Property="IsReadOnly" Value="True"/>
+      <Setter Property="CanUserAddRows" Value="False"/>
+      <Setter Property="AutoGenerateColumns" Value="False"/>
+      <Setter Property="AlternatingRowBackground" Value="#EDF2F7"/>
+    </Style>
+  </Window.Resources>
+
+  <DockPanel>
+    <!-- Status bar -->
+    <Border DockPanel.Dock="Bottom" Background="#E4EAF1" Padding="9">
+      <DockPanel>
+        <TextBlock x:Name="StatusText"/>
+        <TextBlock x:Name="LogText" DockPanel.Dock="Right" Foreground="#52606D"/>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
+                    <Label Content="{t:Lbl_Language}" VerticalAlignment="Center" Padding="0" Margin="0,0,4,0"/>
+                    <ComboBox x:Name="LanguageSelector" Width="100" MinHeight="22" Padding="4,2">
+                        <ComboBoxItem Content="Polski" Tag="PL"/>
+                        <ComboBoxItem Content="English" Tag="EN"/>
+                        <ComboBoxItem Content="Deutsch" Tag="DE"/>
+                    </ComboBox>
+                </StackPanel>
+      </DockPanel>
+    </Border>
+
+    <Grid Margin="8">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto"/>
+        <RowDefinition Height="*"/>
+      </Grid.RowDefinitions>
+
+      <!-- Folders -->
+      <GroupBox Grid.Row="0" Header="{t:Folders_Header}">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="150"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="110"/>
+          </Grid.ColumnDefinitions>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+          <Label Grid.Row="0" Content="{t:Source_Folder}"/>
+          <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1"/>
+          <Button x:Name="BrowseSource" Grid.Row="0" Grid.Column="2" Content="{t:Btn_Browse}"/>
+          <Label Grid.Row="1" Content="{t:Dest_Folder}"/>
+          <TextBox x:Name="DestinationPath" Grid.Row="1" Grid.Column="1"/>
+          <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}"/>
+          <CheckBox x:Name="Recursive" Grid.Row="2" Grid.Column="1"
+                    Content="{t:Chk_Recursive}"
+                    Margin="4,2,4,4" VerticalAlignment="Center"/>
+          <CheckBox x:Name="PreserveFolderStructure" Grid.Row="3" Grid.Column="1"
+                    Content="{t:Chk_PreserveStructure}" IsChecked="True"
+                    Margin="4,2,4,4" VerticalAlignment="Center"/>
+        </Grid>
+      </GroupBox>
+
+      <!-- Tabs -->
+      <TabControl Grid.Row="1" Margin="4">
+
+        <!-- ========== 1. Profile ========== -->
+        <TabItem Header="{t:Tab_Profile}">
+          <Grid Margin="12">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="380"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <GroupBox Header="{t:Saved_Profiles}" Grid.Column="0">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom">
+                  <WrapPanel>
+                    <Button x:Name="ProfileNew"    Content="{t:Btn_New}"/>
+                    <Button x:Name="ProfileLoad"   Content="{t:Btn_Load}"/>
+                    <Button x:Name="ProfileCopy"   Content="{t:Btn_Copy}"/>
+                    <Button x:Name="ProfileDelete" Content="{t:Btn_Delete}"/>
+                  </WrapPanel>
+                  <Button x:Name="ProfileSave" Content="{t:Btn_Save_Config}" Background="#D6E9FC"/>
+                </StackPanel>
+                <ListBox x:Name="ProfileList" DisplayMemberPath="Name"/>
+              </DockPanel>
+            </GroupBox>
+            <StackPanel Grid.Column="1" Margin="20,0,0,0">
+              <TextBlock FontSize="18" FontWeight="SemiBold" Text="{t:Title_Wizard}"/>
+              <TextBlock Margin="0,12,0,0" TextWrapping="Wrap"
+                         Text="{t:Txt_ProfileHint}"/>
+              <TextBlock Margin="0,18,0,0" FontWeight="SemiBold" Text="{t:Txt_ActiveProfile}"/>
+              <TextBlock x:Name="CurrentProfile" Margin="0,4,0,0" Text="{t:Txt_Unsaved}"/>
+            </StackPanel>
+          </Grid>
+        </TabItem>
+
+        <!-- ========== 2. File analysis ========== -->
+        <TabItem Header="{t:Tab_Analysis}">
+          <Grid Margin="8">
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <WrapPanel>
+              <Button x:Name="Analyze" Content="{t:Btn_Analyze}" Background="#D6E9FC"/>
+              <TextBlock Text="{t:Txt_Extension}" Margin="14,9,0,0"/>
+              <ComboBox x:Name="ExtensionFilter" Width="130"/>
+              <TextBlock Text="{t:Txt_TokenRegex}" Margin="14,9,0,0" Foreground="#52606D" ToolTip="{t:Tip_TokenRegexLabel}"/>
+              <TextBox x:Name="TokenRegex" Width="400" Text="(?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)" ToolTip="{t:Tip_TokenRegex}" FontFamily="Consolas"/>
+              <TextBlock x:Name="AnalysisInfo" Margin="14,9,0,0"/>
+            </WrapPanel>
+            <Grid Grid.Row="1">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <GroupBox Grid.Column="0" Header="{t:Header_DetectedStructs}">
+                <DataGrid x:Name="PatternGrid" SelectionMode="Single">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="{t:Col_Extension}" Binding="{Binding Extension}" Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Structure}"    Binding="{Binding Display}"   Width="3*"/>
+                    <DataGridTextColumn Header="{t:Col_Files}"        Binding="{Binding Count}"     Width="*"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </GroupBox>
+              <GroupBox Grid.Column="1" Header="{t:Header_Examples}">
+                <DockPanel>
+                  <TextBlock x:Name="PatternHint" DockPanel.Dock="Bottom" Margin="4"
+                             TextWrapping="Wrap" Foreground="#52606D"/>
+                  <ListBox x:Name="PatternSamples"/>
+                </DockPanel>
+              </GroupBox>
+            </Grid>
+          </Grid>
+        </TabItem>
+
+        <!-- ========== 3. Fields and mappings ========== -->
+        <TabItem Header="{t:Tab_Fields}">
+          <Grid Margin="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: field table -->
+            <GroupBox Grid.Column="0" Header="{t:Header_DetectedFields}">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Bottom" Margin="4" Foreground="#52606D" TextWrapping="Wrap"
+                           Text="{t:Txt_FieldHint}"/>
+                <DataGrid x:Name="FieldGrid" SelectionMode="Single">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="#"        Binding="{Binding DisplayIndex}" Width="30"/>
+                    <DataGridTextColumn Header="{t:Col_Sample}" Binding="{Binding Sample}"       Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Type}"      Binding="{Binding EffectiveType}" Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Status}" Binding="{Binding TypeStatus}" Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Name}"    Binding="{Binding Name}"         Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Role}"     Binding="{Binding Role}"         Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Source}"   Binding="{Binding Source}"       Width="72"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+            </GroupBox>
+
+            <!-- Right: field editing -->
+            <GroupBox Grid.Column="1" Header="{t:Header_EditField}">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="4">
+                  <TextBlock Text="{t:Txt_FieldName}" Margin="0,0,0,2"/>
+                  <TextBox x:Name="FieldName"/>
+                  <TextBlock Text="{t:Txt_Role}" Margin="0,4,0,2"/>
+                  <ComboBox x:Name="FieldRole">
+                    <ComboBoxItem Content="{t:Role_Value}"/>
+                    <ComboBoxItem Content="{t:Role_Date}"/>
+                    <ComboBoxItem Content="{t:Role_Id}"/>
+                    <ComboBoxItem Content="{t:Role_Const}"/>
+                    <ComboBoxItem Content="{t:Role_Ignore}"/>
+                  </ComboBox>
+                                    <TextBlock Text="{t:Txt_DataType}" Margin="0,4,0,2"/>
+                                    <ComboBox x:Name="FieldType" DisplayMemberPath="Label"/>
+                                      <TextBlock Text="{t:Txt_Candidates}" Margin="0,4,0,2"/>
+                                      <TextBlock x:Name="CandidateInfo" Margin="4,0,4,4" Foreground="#52606D" TextWrapping="Wrap"/>
+                  <Button x:Name="FieldApply" Content="{t:Btn_ApplyField}" Margin="4,6,4,4"/>
+
+                  <Separator Margin="4,8"/>
+
+                  <!-- Per-field transforms -->
+                  <TextBlock FontWeight="Bold" Text="{t:Header_Transformations}" Margin="0,4,0,4"/>
+                  <TextBlock Foreground="#52606D" TextWrapping="Wrap" FontSize="11.5"
+                             Text="{t:Txt_TransformHint}"/>
+                  <ListBox x:Name="TransformList" DisplayMemberPath="Display" Height="105" Margin="4"/>
+                  <WrapPanel>
+                    <Button x:Name="TransformAdd"    Content="{t:Btn_AddTransform}"/>
+                    <Button x:Name="TransformRemove" Content="{t:Btn_Delete}"/>
+                  </WrapPanel>
+
+                  <Separator Margin="4,8"/>
+
+                  <!-- Global mappings -->
+                  <TextBlock FontWeight="Bold" Text="{t:Header_Mappings}" Margin="0,4,0,4"/>
+                  <TextBlock Foreground="#52606D" TextWrapping="Wrap" FontSize="11.5"
+                             Text="{t:Txt_MappingHint}"/>
+                  <ListBox x:Name="MappingList" DisplayMemberPath="Display" Height="105" Margin="4"/>
+                  <WrapPanel>
+                    <Button x:Name="MappingAdd"    Content="{t:Btn_AddMapping}"/>
+                    <Button x:Name="MappingEdit"   Content="{t:Btn_Edit}"/>
+                    <Button x:Name="MappingRemove" Content="{t:Btn_Delete}"/>
+                    <Button x:Name="MappingUp"     Content="{t:Btn_Up}"/>
+                    <Button x:Name="MappingDown"   Content="{t:Btn_Down}"/>
+                  </WrapPanel>
+                </StackPanel>
+              </ScrollViewer>
+            </GroupBox>
+          </Grid>
+        </TabItem>
+
+        <!-- ========== 4. Destination name ========== -->
+        <TabItem Header="{t:Tab_DestName}">
+          <Grid Margin="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left: name builder -->
+            <GroupBox Grid.Column="0" Header="{t:Header_DestElements}">
+              <DockPanel>
+                <StackPanel DockPanel.Dock="Bottom">
+                  <WrapPanel Margin="0,4,0,0">
+                    <ComboBox x:Name="FieldSelector" Width="240"/>
+                    <Button x:Name="OutputAddField" Content="{t:Btn_AddField}"/>
+                  </WrapPanel>
+                  <WrapPanel>
+                    <TextBox x:Name="OutputText" Width="240"/>
+                    <Button x:Name="OutputAddText"      Content="{t:Btn_AddText}"/>
+                    <Button x:Name="OutputAddSeparator" Content="{t:Btn_AddSep}"/>
+                  </WrapPanel>
+                  <WrapPanel>
+                    <Button x:Name="OutputUp"     Content="{t:Btn_Up}"/>
+                    <Button x:Name="OutputDown"   Content="{t:Btn_Down}"/>
+                    <Button x:Name="OutputRemove" Content="{t:Btn_RemoveElement}"/>
+                  </WrapPanel>
+                </StackPanel>
+                <ListBox x:Name="OutputList" DisplayMemberPath="Display"/>
+              </DockPanel>
+            </GroupBox>
+
+            <!-- Right: extension settings and preview -->
+            <GroupBox Grid.Column="1" Header="{t:Header_Settings}">
+              <StackPanel Margin="4">
+                <WrapPanel>
+                  <CheckBox x:Name="KeepExtension" IsChecked="True"
+                            Content="{t:Chk_KeepExt}" Margin="4"/>
+                </WrapPanel>
+                <WrapPanel>
+                  <TextBlock Text="{t:Txt_NewExt}" Margin="10,8,4,0"/>
+                  <TextBox x:Name="NewExtension" Width="120" IsEnabled="False"/>
+                </WrapPanel>
+
+                <Separator Margin="4,12"/>
+
+                <TextBlock FontWeight="Bold" Text="{t:Txt_PreviewTitle}" Margin="0,4,0,8"/>
+                <Border Background="#FFFEF5" BorderBrush="#E0D8B0" BorderThickness="1"
+                        Padding="10" CornerRadius="4">
+                  <TextBlock x:Name="OutputExample" TextWrapping="Wrap"
+                             FontFamily="Consolas" FontSize="13"/>
+                </Border>
+              </StackPanel>
+            </GroupBox>
+          </Grid>
+        </TabItem>
+
+        <!-- ========== 5. Preview and execution ========== -->
+        <TabItem Header="{t:Tab_Preview}">
+          <DockPanel Margin="8">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+              <Button x:Name="BuildPreview" Content="{t:Btn_BuildPreview}" Background="#D6E9FC"/>
+              <CheckBox x:Name="EnforcePattern" Content="{t:Chk_EnforcePattern}" Margin="10,0" VerticalAlignment="Center"/>
+              <ComboBox x:Name="PreviewFilter" Width="150">
+                <ComboBoxItem Content="{t:Cbo_All}" IsSelected="True"/>
+                <ComboBoxItem Content="{t:Cbo_Errors}"/>
+                <ComboBoxItem Content="{t:Cbo_Ready}"/>
+              </ComboBox>
+              <TextBlock x:Name="PreviewInfo" Margin="12,10,4,4"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom">
+              <ProgressBar x:Name="ProgressBar" Height="18" Margin="4" Visibility="Collapsed"/>
+              <WrapPanel HorizontalAlignment="Right">
+                <TextBlock Text="{t:Lbl_ExecutionMode}" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                <ComboBox x:Name="ExecutionMode" Width="110" Margin="0,0,8,0">
+                  <ComboBoxItem Content="{t:Action_Copy}" IsSelected="True"/>
+                  <ComboBoxItem Content="{t:Action_Move}"/>
+                </ComboBox>
+                <Button x:Name="ExportAudit" Content="{t:Btn_Export}"/>
+                <Button x:Name="OpenLog"     Content="{t:Btn_OpenLog}"/>
+                <Button x:Name="Execute"     Content="{t:Btn_Execute}" Background="#C6EFCE"/>
+              </WrapPanel>
+            </StackPanel>
+            <DataGrid x:Name="PreviewGrid">
+              <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                  <Setter Property="ToolTip" Value="{Binding Details}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding StatusCode}" Value="Error">
+                      <Setter Property="Background" Value="#FFE0E0"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding StatusCode}" Value="Ready">
+                      <Setter Property="Background" Value="#E8F5E9"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </DataGrid.RowStyle>
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="{t:Col_SourceFile}"  Binding="{Binding SourceRelative}"      Width="2*"/>
+                <DataGridTextColumn Header="{t:Col_DestName}" Binding="{Binding DestinationRelative}"  Width="2*"/>
+                <DataGridTextColumn Header="{t:Col_Status}"         Binding="{Binding Status}"               Width="80"/>
+                <DataGridTextColumn Header="{t:Col_Details}"      Binding="{Binding Details}"              Width="3*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+        </TabItem>
+
+      </TabControl>
+    </Grid>
+  </DockPanel>
+</Window>
