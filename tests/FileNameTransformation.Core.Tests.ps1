@@ -400,3 +400,84 @@ Describe 'Profile compatibility' {
         $profile.OutputParts[0].Value | Should -Be 'Customer'
     }
 }
+
+Describe 'Test-FNTNamingConvention' {
+    It 'validates compliant filename' {
+        $res = Test-FNTNamingConvention -BaseName '20260721_MusteraM_Protokoll_Neubau-LBO_v1'
+        $res.IsCompliant | Should -Be $true
+        $res.Segments.Date | Should -Be '20260721'
+        $res.Segments.Author | Should -Be 'MusteraM'
+        $res.Segments.DocType | Should -Be 'Protokoll'
+        $res.Segments.FreeText | Should -Be 'Neubau-LBO'
+        $res.Segments.Version | Should -Be 'v1'
+        $res.AuthorAnalysis.DetectedFormat | Should -Be 'SurnameFirst'
+    }
+
+    It 'validates compliant filename with hyphen padding' {
+        $res1 = Test-FNTNamingConvention -BaseName '20260721_MajkJ---_Protokoll_Neubau-LBO_v1'
+        $res1.IsCompliant | Should -Be $true
+        $res1.Segments.Author | Should -Be 'MajkJ---'
+        $res1.AuthorAnalysis.DetectedFormat | Should -Be 'SurnameFirst'
+
+        $res2 = Test-FNTNamingConvention -BaseName '20260721_MnichA--_Protokoll_Neubau-LBO_v1'
+        $res2.IsCompliant | Should -Be $true
+        $res2.Segments.Author | Should -Be 'MnichA--'
+    }
+
+    It 'detects reversed author with hyphens (GivenFirst)' {
+        $res = Test-FNTNamingConvention -BaseName '20260721_JMajk---_Protokoll_Neubau-LBO_v1'
+        $res.IsCompliant | Should -Be $false
+        $res.AuthorAnalysis.DetectedFormat | Should -Be 'GivenFirst'
+        $res.AuthorAnalysis.SuggestedAuthor | Should -Be 'MajkJ---'
+        $res.Violations | Should -Contain 'Compliance_AuthorReversed'
+    }
+
+    It 'detects short author segment and suggests hyphens' {
+        $res = Test-FNTNamingConvention -BaseName '20260721_MajkJ_Protokoll_Neubau-LBO_v1'
+        $res.IsCompliant | Should -Be $false
+        $res.AuthorAnalysis.DetectedFormat | Should -Be 'TooShort'
+        $res.AuthorAnalysis.SuggestedAuthor | Should -Be 'MajkJ---'
+        $res.Violations | Should -Contain 'Compliance_AuthorShort'
+    }
+
+    It 'detects short author segment with single hyphen and pads to 8 chars' {
+        $res = Test-FNTNamingConvention -BaseName '20201221_MnichA-_SerieNumeracji_2021'
+        $res.IsCompliant | Should -Be $false
+        $res.AuthorAnalysis.DetectedFormat | Should -Be 'TooShort'
+        $res.AuthorAnalysis.SuggestedAuthor | Should -Be 'MnichA--'
+        $res.Violations | Should -Contain 'Compliance_AuthorShort'
+    }
+
+    It 'parses 3-part filename with Date, Author, and FreeText (missing DocType)' {
+        $res = Test-FNTNamingConvention -BaseName '20211104_MnichA-_Kilometry SK627GE 10.2021'
+        $res.IsCompliant | Should -Be $false
+        $res.Segments.Date | Should -Be '20211104'
+        $res.Segments.Author | Should -Be 'MnichA-'
+        $res.Segments.DocType | Should -Be ''
+        $res.Segments.FreeText | Should -Be 'Kilometry SK627GE 10.2021'
+        $res.AuthorAnalysis.SuggestedAuthor | Should -Be 'MnichA--'
+        $res.Violations | Should -Contain 'Compliance_StructureBad'
+        $res.Violations | Should -Contain 'Compliance_AuthorShort'
+    }
+
+    It 'detects invalid date format' {
+        $res = Test-FNTNamingConvention -BaseName '2026-07-21_MusteraM_Protokoll_Neubau-LBO_v1'
+        $res.IsCompliant | Should -Be $false
+        $res.Violations | Should -Contain 'Compliance_DateBad'
+    }
+}
+
+Describe 'Get-FNTNormalizedAuthorSegment' {
+    It 'normalizes various author input strings to exactly 8 characters' -TestCases @(
+        @{ Input = 'MnichA-';      Expected = 'MnichA--' }
+        @{ Input = 'MajkJ';       Expected = 'MajkJ---' }
+        @{ Input = 'AMnich';      Expected = 'MnichA--' }
+        @{ Input = 'AMnich-';     Expected = 'MnichA--' }
+        @{ Input = 'JMajk---';    Expected = 'MajkJ---' }
+        @{ Input = 'MusteraM';    Expected = 'MusteraM' }
+        @{ Input = 'MustermannM'; Expected = 'MustermM' }
+    ) {
+        param($Input, $Expected)
+        Get-FNTNormalizedAuthorSegment $Input | Should -Be $Expected
+    }
+}

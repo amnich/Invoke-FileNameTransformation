@@ -639,4 +639,268 @@ function ConvertTo-FNTProfile {
     return $normalized
 }
 
-Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Test-FNTCustomTypeRules, ConvertTo-FNTProfile
+function Get-FNTFileMetadata {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path
+    )
+
+    $result = [ordered]@{
+        CreationDate    = $null
+        CreationDateStr = ''
+        Author          = ''
+        AuthorSurname7  = ''
+        AuthorInitial   = ''
+        AuthorSegment   = ''
+        Title           = ''
+        LastModified    = $null
+        LastModifiedStr = ''
+    }
+
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        try {
+            $fi = Get-Item -LiteralPath $Path -ErrorAction Stop
+            $result.CreationDate = $fi.CreationTime
+            $result.CreationDateStr = $fi.CreationTime.ToString('yyyyMMdd')
+            $result.LastModified = $fi.LastWriteTime
+            $result.LastModifiedStr = $fi.LastWriteTime.ToString('yyyyMMdd')
+        }
+        catch {}
+
+        try {
+            $shell = New-Object -ComObject Shell.Application
+            $parent = Split-Path $Path -Parent
+            $leaf   = Split-Path $Path -Leaf
+            $folder = $shell.NameSpace($parent)
+            if ($folder) {
+                $item = $folder.ParseName($leaf)
+                if ($item) {
+                    $author = $folder.GetDetailsOf($item, 20)
+                    $title  = $folder.GetDetailsOf($item, 21)
+                    if ($author) { $result.Author = [string]$author.Trim() }
+                    if ($title)  { $result.Title  = [string]$title.Trim() }
+                }
+            }
+        }
+        catch {}
+
+        if ($result.Author) {
+            $authorClean = $result.Author -replace '[^\p{L}\s,-]', ''
+            $parts = @($authorClean -split '\s+|,') | Where-Object { $_.Trim() }
+            if ($parts.Count -ge 2) {
+                if ($result.Author -match ',') {
+                    $surname = $parts[0].Trim()
+                    $given   = $parts[1].Trim()
+                } else {
+                    $given   = $parts[0].Trim()
+                    $surname = $parts[-1].Trim()
+                }
+                if ($surname -and $given) {
+                    $s7 = $surname.Substring(0, [Math]::Min(7, $surname.Length))
+                    $g1 = $given.Substring(0, 1).ToUpper()
+                    # Format as Titlecase surname (up to 7 chars) + 1 uppercase initial
+                    $s7Formatted = (Get-Culture).TextInfo.ToTitleCase($s7.ToLower())
+                    $result.AuthorSurname7 = $s7Formatted
+                    $result.AuthorInitial  = $g1
+                    # Combine surname + initial, then pad with '-' to length 8 if needed
+                    $baseSeg = "$s7Formatted$g1"
+                    if ($baseSeg.Length -lt 8) {
+                        $baseSeg = $baseSeg.PadRight(8, '-')
+                    }
+                    $result.AuthorSegment = $baseSeg
+                }
+            }
+            elseif ($parts.Count -eq 1 -and $parts[0].Length -ge 2) {
+                $s7 = $parts[0].Substring(0, [Math]::Min(7, $parts[0].Length))
+                $s7Formatted = (Get-Culture).TextInfo.ToTitleCase($s7.ToLower())
+                $result.AuthorSurname7 = $s7Formatted
+                $result.AuthorSegment  = $s7Formatted.PadRight(8, '-')
+            }
+        }
+    }
+
+    return [pscustomobject]$result
+}
+
+function Get-FNTNormalizedAuthorSegment {
+    [CmdletBinding()]
+    param(
+        [AllowEmptyString()][string]$Raw
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Raw)) {
+        return 'UnknownA'
+    }
+
+    $cleanNoHyphens = $Raw -replace '[^\p{L}]', ''
+    if ($cleanNoHyphens.Length -lt 2) {
+        return $Raw.PadRight(8, '-')
+    }
+
+    $lastChar = $cleanNoHyphens.Substring($cleanNoHyphens.Length - 1, 1)
+    $firstChar = $cleanNoHyphens.Substring(0, 1)
+
+    $isLastUpper = ($lastChar -cmatch '[\p{Lu}]')
+    $isFirstUpper = ($firstChar -cmatch '[\p{Lu}]')
+
+    if ($isLastUpper -and ($cleanNoHyphens.Length -eq 2 -or $cleanNoHyphens.Substring(0, $cleanNoHyphens.Length - 1) -cmatch '[\p{Ll}]')) {
+        # SurnameFirst: "Mnich" + "A"
+        $surname = $cleanNoHyphens.Substring(0, $cleanNoHyphens.Length - 1)
+        $initial = $lastChar
+    }
+    elseif ($isFirstUpper -and ($cleanNoHyphens.Substring(1) -cmatch '[\p{Ll}]')) {
+        # GivenFirst: "A" + "Mnich" -> surname "Mnich", initial "A"
+        $initial = $firstChar
+        $surname = $cleanNoHyphens.Substring(1)
+    }
+    else {
+        # Default fallback
+        $surname = $cleanNoHyphens.Substring(0, [Math]::Min(7, $cleanNoHyphens.Length - 1))
+        $initial = $cleanNoHyphens.Substring($cleanNoHyphens.Length - 1, 1).ToUpper()
+    }
+
+    $s7 = $surname.Substring(0, [Math]::Min(7, $surname.Length))
+    $s7Formatted = (Get-Culture).TextInfo.ToTitleCase($s7.ToLower())
+    $i1Formatted = $initial.ToUpper()
+
+    $result = "$s7Formatted$i1Formatted"
+    return $result.PadRight(8, '-')
+}
+
+function Test-FNTNamingConvention {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$BaseName
+    )
+
+    $violations = New-Object System.Collections.Generic.List[string]
+    $segments = [ordered]@{
+        Date     = ''
+        Author   = ''
+        DocType  = ''
+        FreeText = ''
+        Version  = ''
+    }
+    $authorAnalysis = [ordered]@{
+        Raw               = ''
+        DetectedFormat    = 'Unknown' # SurnameFirst, GivenFirst, TooShort, TooLong, Unknown
+        SuggestedAuthor   = ''
+    }
+
+    $parts = $BaseName -split '_'
+
+    if ($parts.Count -lt 4) {
+        $violations.Add('Compliance_StructureBad')
+        if ($parts.Count -eq 3) {
+            $isPart0Date = ($parts[0] -match '^\d{8}$')
+            $isPart1Author = ($parts[1] -match '^[\p{L}-]+$')
+
+            if ($isPart0Date -and $isPart1Author) {
+                $segments.Date     = $parts[0]
+                $segments.Author   = $parts[1]
+                $segments.DocType  = ''
+                $segments.FreeText = $parts[2]
+            }
+            elseif ($isPart0Date) {
+                $segments.Date     = $parts[0]
+                $segments.Author   = ''
+                $segments.DocType  = $parts[1]
+                $segments.FreeText = $parts[2]
+            }
+            else {
+                $segments.Author   = $parts[0]
+                $segments.DocType  = $parts[1]
+                $segments.FreeText = $parts[2]
+            }
+        }
+        elseif ($parts.Count -eq 2) {
+            if ($parts[0] -match '^\d{8}$') {
+                $segments.Date     = $parts[0]
+                $segments.FreeText = $parts[1]
+            }
+            elseif ($parts[0] -match '^[\p{L}-]+$') {
+                $segments.Author   = $parts[0]
+                $segments.FreeText = $parts[1]
+            }
+            else {
+                $segments.FreeText = ($parts -join '_')
+            }
+        }
+        elseif ($parts.Count -eq 1) {
+            $segments.FreeText = $parts[0]
+        }
+    }
+    else {
+        # Extract version if 5th or later part matches ^v\d+$
+        $hasVersion = $false
+        if ($parts.Count -ge 5 -and $parts[-1] -match '^v\d+$') {
+            $segments.Version = $parts[-1]
+            $hasVersion = $true
+            $freeTextParts = $parts[3..($parts.Count - 2)]
+        }
+        else {
+            $freeTextParts = $parts[3..($parts.Count - 1)]
+        }
+
+        $segments.Date     = $parts[0]
+        $segments.Author   = $parts[1]
+        $segments.DocType  = $parts[2]
+        $segments.FreeText = ($freeTextParts -join '_')
+    }
+
+    # 1. Validate Date (JJJJMMTT)
+    $parsedDate = [datetime]::MinValue
+    if (-not ($segments.Date -match '^\d{8}$' -and
+        [datetime]::TryParseExact($segments.Date, 'yyyyMMdd', $script:InvariantCulture, [Globalization.DateTimeStyles]::None, [ref]$parsedDate))) {
+        $violations.Add('Compliance_DateBad')
+    }
+
+    # 2. Validate Author (XxxxxxxY: 7 chars surname + 1 char initial = 8 chars, padded on right with '-' if shorter)
+    $authorRaw = $segments.Author
+    $authorAnalysis.Raw = $authorRaw
+
+    $suggested = Get-FNTNormalizedAuthorSegment $authorRaw
+    $authorAnalysis.SuggestedAuthor = $suggested
+
+    if ($authorRaw -eq $suggested) {
+        $authorAnalysis.DetectedFormat = 'SurnameFirst'
+    }
+    else {
+        if ($authorRaw.Length -lt 8) {
+            $authorAnalysis.DetectedFormat = 'TooShort'
+            $violations.Add('Compliance_AuthorShort')
+        }
+        elseif ($authorRaw.Length -gt 8) {
+            $authorAnalysis.DetectedFormat = 'TooLong'
+            $violations.Add('Compliance_AuthorLong')
+        }
+        else {
+            $authorAnalysis.DetectedFormat = 'GivenFirst'
+            $violations.Add('Compliance_AuthorReversed')
+        }
+    }
+
+    # 3. DocType: non-empty check
+    if ([string]::IsNullOrWhiteSpace($segments.DocType)) {
+        $violations.Add('Compliance_StructureBad')
+    }
+
+    # 4. FreeText: non-empty check
+    if ([string]::IsNullOrWhiteSpace($segments.FreeText)) {
+        $violations.Add('Compliance_StructureBad')
+    }
+
+    # 5. Version: optional, but if present must be valid v\d+
+    if ($parts.Count -ge 5 -and -not $hasVersion -and $parts[-1] -like 'v*') {
+        $violations.Add('Compliance_NoVersion')
+    }
+
+    return [pscustomobject]@{
+        IsCompliant    = ($violations.Count -eq 0)
+        Segments       = [pscustomobject]$segments
+        Violations     = @($violations)
+        AuthorAnalysis = [pscustomobject]$authorAnalysis
+    }
+}
+
+Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Test-FNTCustomTypeRules, ConvertTo-FNTProfile, Get-FNTFileMetadata, Test-FNTNamingConvention, Get-FNTNormalizedAuthorSegment

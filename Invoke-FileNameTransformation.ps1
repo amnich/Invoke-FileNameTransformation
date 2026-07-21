@@ -945,6 +945,7 @@ $xamlDoc.SelectNodes('//*[@x:Name]', $ns) | ForEach-Object {
 . (Join-Path $script:ScriptRoot 'src\Mappings.ps1')
 . (Join-Path $script:ScriptRoot 'src\Preview.ps1')
 . (Join-Path $script:ScriptRoot 'src\Profiles.ps1')
+. (Join-Path $script:ScriptRoot 'src\Compliance.ps1')
 
 function Log([string]$message, [string]$level = 'INFO') {
     if ([string]::IsNullOrWhiteSpace($script:LogPath)) {

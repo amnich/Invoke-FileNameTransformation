@@ -33,6 +33,9 @@ function UpdateOutputExample {
                     $values[$f.Name] = $item.Parts[$f.PartIndex].Value
                 }
             }
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName
+            $values[(T 'Name_MetaDate')] = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
+            $values[(T 'Name_MetaAuthor')] = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             ValidateFieldValues $values
 
             # 2. Apply mappings (in order, allows chaining)
@@ -161,6 +164,9 @@ function FullBuildPreview {
                     }
                 }
             }
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName
+            $values[(T 'Name_MetaDate')] = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
+            $values[(T 'Name_MetaAuthor')] = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             ValidateFieldValues $values
 
             # 2. Apply mappings (in order)

@@ -83,6 +83,47 @@
       <!-- Tabs -->
       <TabControl Grid.Row="1" Margin="4">
 
+        <!-- ========== 0. Compliance ========== -->
+        <TabItem Header="{t:Tab_Compliance}">
+          <DockPanel Margin="8">
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+              <Button x:Name="ComplianceScan" Content="{t:Btn_ScanCompliance}" Background="#D6E9FC"/>
+              <CheckBox x:Name="ComplianceRecursive" Content="{t:Chk_Recursive}" Margin="10,0" VerticalAlignment="Center"/>
+              <TextBlock Text="{t:Txt_Extension}" Margin="14,8,4,0"/>
+              <ComboBox x:Name="ComplianceExtFilter" Width="100" VerticalAlignment="Center"/>
+              <TextBlock x:Name="ComplianceInfo" Margin="14,8,4,4" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
+              <WrapPanel HorizontalAlignment="Right">
+                <Button x:Name="ComplianceFixSelected" Content="{t:Btn_FixSelected}" Background="#C6EFCE"/>
+              </WrapPanel>
+            </StackPanel>
+            <DataGrid x:Name="ComplianceGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended">
+              <DataGrid.RowStyle>
+                <Style TargetType="DataGridRow">
+                  <Setter Property="ToolTip" Value="{Binding Details}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsCompliant}" Value="True">
+                      <Setter Property="Background" Value="#E8F5E9"/>
+                    </DataTrigger>
+                    <DataTrigger Binding="{Binding IsCompliant}" Value="False">
+                      <Setter Property="Background" Value="#FFF3E0"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </DataGrid.RowStyle>
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="{t:Col_SourceFile}" Binding="{Binding FileName}" Width="2*"/>
+                <DataGridTextColumn Header="{t:Col_Status}" Binding="{Binding StatusText}" Width="90"/>
+                <DataGridTextColumn Header="{t:Col_MetaDate}" Binding="{Binding MetaDate}" Width="110"/>
+                <DataGridTextColumn Header="{t:Col_MetaAuthor}" Binding="{Binding MetaAuthor}" Width="140"/>
+                <DataGridTextColumn Header="{t:Col_Violations}" Binding="{Binding ViolationText}" Width="2*"/>
+                <DataGridTextColumn Header="{t:Col_SuggestedName}" Binding="{Binding SuggestedName}" Width="2*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </DockPanel>
+        </TabItem>
+
         <!-- ========== 1. Profile ========== -->
         <TabItem Header="{t:Tab_Profile}">
           <Grid Margin="12">

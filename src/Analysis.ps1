@@ -146,10 +146,12 @@ function SetPattern($pattern) {
             })
     }
 
-    # Recreate virtual fields from existing mappings
+    # Recreate virtual fields from existing mappings and file metadata
     foreach ($m in $script:Mappings) {
         EnsureVirtualField $m.OutputField
     }
+    EnsureVirtualField (T 'Name_MetaDate')
+    EnsureVirtualField (T 'Name_MetaAuthor')
 
     $FieldGrid.ItemsSource = $script:Fields
     RefreshFieldSelector

@@ -11,6 +11,19 @@ $BrowseDestination.Add_Click({
         if ($p) { $DestinationPath.Text = $p }
     })
 
+# --- Tab 0: Compliance ---
+$ComplianceScan.Add_Click({
+        try { ScanCompliance; SetStatus (T 'Status_ComplianceDone') }
+        catch { ErrorBox (T 'Err_Compliance') $_ }
+    })
+$ComplianceFixSelected.Add_Click({
+        try { ApplyComplianceFix }
+        catch { ErrorBox (T 'Err_Compliance') $_ }
+    })
+$ComplianceExtFilter.Add_SelectionChanged({
+        try { ScanCompliance } catch {}
+    })
+
 # --- Tab 2: Analysis ---
 $Analyze.Add_Click({
         try { AnalyzePatterns; SetStatus (T 'Status_AnalysisDone') }
