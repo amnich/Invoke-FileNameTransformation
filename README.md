@@ -20,7 +20,10 @@ Invoke-FileNameTransformation is a GUI-based PowerShell utility for advanced fil
 
 - Windows PowerShell 5.1
 - Windows OS with WPF and WinForms support
-- `FileNameTransformation.Core.psm1` in the same folder as the script or packaged executable
+- `FileNameTransformation.Core.psm1` in the same folder when running the development script
+
+The executable produced by `ps2exe.ps1` embeds the core module, `src` scripts,
+locale JSON files, and `MainWindow.xaml`; it can be distributed as a single EXE.
 
 ## Usage
 
@@ -134,4 +137,4 @@ Expected results:
 - Existing profiles without a schema version are migrated in memory when loaded. They are not overwritten automatically.
 - If AppData is unavailable, the script falls back to the script directory or a temporary folder.
 - Preserving the folder structure is enabled by default. When it is disabled, files from different subfolders can produce duplicate destination names; the preview flags those collisions before execution.
-- Keep `FileNameTransformation.Core.psm1` beside `Invoke-FileNameTransformation.exe` when distributing the packaged application.
+- The packaged executable is self-contained. The source folders and module are only needed for development or rebuilding it.
