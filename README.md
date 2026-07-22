@@ -87,7 +87,7 @@ Pattern enforcement is intentionally strict. Other files must have the same numb
 
 ## Custom Data Types
 
-Custom named regex types are configured in `config.json`. Patterns must match the complete candidate value. Set `AllowComposite` to allow a rule to join values across tokenizer separators.
+Custom named regex types can be managed via Tab 6 in the GUI or configured directly in `config.json`. For detailed documentation, schema details, and practical examples, see the [Custom Type Rules Guide](CUSTOM_TYPE_RULES.md).
 
 ```json
 {
@@ -108,7 +108,7 @@ Custom named regex types are configured in `config.json`. Patterns must match th
 The language selector writes the selected language to the script-local `config.json`; that valid saved value takes precedence over the operating system language at the next start. Changing the UI language preserves custom rules. Invalid custom patterns are reported at startup.
 Custom rule IDs must start with a letter and may contain letters, numbers, dots, underscores, and hyphens. IDs are case-insensitively unique. Invalid or duplicate rules are reported separately at startup and skipped without disabling built-in recognition. `DisplayName` is optional and defaults to `Id`.
 
-Custom rules remain file-configured in this iteration. Edit `config.json` before starting the application; an in-app rule management dialog is not currently planned.
+Custom rules can be created, updated, deleted, and tested live using **Tab 6 (Custom Rules Management & Live Tester)** in the GUI, or edited in `config.json`.
 
 ## Tests
 

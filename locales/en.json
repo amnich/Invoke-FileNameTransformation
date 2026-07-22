@@ -1,4 +1,7 @@
 {
+  "Message": "Message",
+  "Line": "Line",
+  "Log": "Log",
   "Action_Copy": "Copy",
   "Action_Move": "Move",
   "Btn_Add": "Add",

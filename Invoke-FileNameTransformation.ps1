@@ -347,9 +347,9 @@ function GetLocalizedErrorMessage([Exception]$exception) {
 
 function ErrorBox([string]$title, $err) {
     $localizedMessage = GetLocalizedErrorMessage $err.Exception
-    $msg = "Komunikat: $localizedMessage"
-    $msg += "`nLinia:     $($err.InvocationInfo.ScriptLineNumber)"
-    $msg += "`nLog:       $script:LogPath"
+    $msg = "$(T 'Message'): $localizedMessage"
+    $msg += "`n$(T 'Line'):     $($err.InvocationInfo.ScriptLineNumber)"
+    $msg += "`n$(T 'Log'):       $script:LogPath"
     Log "$title | $localizedMessage" 'ERROR'
     [Windows.MessageBox]::Show($msg, $title, 'OK', 'Error') | Out-Null
 }

@@ -1,4 +1,7 @@
 {
+  "Message": "Komunikat",
+  "Line": "Linia",
+  "Log": "Log",
   "Action_Copy": "Kopiuj",
   "Action_Move": "Przenieś",
   "Btn_Add": "Dodaj",
@@ -301,7 +304,7 @@
   "Tr_SeqStep": "Krok przyrostu:",
   "Tr_SeqWidth": "Szerokość paddingu:",
   "Disp_Transliterate": "Bez polskich/diakrytycznych znaków",
-  "Tab_CustomRules": "Reguły Typów Custom",
+  "Tab_CustomRules": "Niestandardowe reguły typów",
   "Header_CustomRules": "Własne Reguły Rozpoznawania Typów",
   "Header_EditCustomRule": "Edycja Reguły & Tester",
   "Header_TestCustomRule": "Tester Wyrażeń Regex",
