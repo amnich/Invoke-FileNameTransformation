@@ -89,7 +89,6 @@
           <DockPanel Margin="8">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
               <Button x:Name="ComplianceScan" Content="{t:Btn_ScanCompliance}" Background="#D6E9FC"/>
-              <CheckBox x:Name="ComplianceRecursive" Content="{t:Chk_Recursive}" Margin="10,0" VerticalAlignment="Center"/>
               <TextBlock Text="{t:Txt_Extension}" Margin="14,8,4,0"/>
               <ComboBox x:Name="ComplianceExtFilter" Width="100" VerticalAlignment="Center"/>
               <TextBlock x:Name="ComplianceInfo" Margin="14,8,4,4" VerticalAlignment="Center"/>

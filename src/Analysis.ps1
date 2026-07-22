@@ -66,7 +66,7 @@ function BuildPatternList {
     $script:Patterns = @()
     foreach ($g in $raw | Group-Object Signature) {
         $sample = $g.Group[0]
-        $all = $g.Group
+        $all = @($g.Group)
         $labels = @()
         $fieldInferences = @{}
         for ($i = 0; $i -lt $sample.Parts.Count; $i++) {
@@ -84,7 +84,7 @@ function BuildPatternList {
             Extension       = $ext
             Display         = ($labels -join '')
             Count           = $g.Count
-            Items           = $all
+            Items           = @($all)
             Signature       = $g.Name
             FieldInferences = $fieldInferences
         }

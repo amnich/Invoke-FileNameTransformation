@@ -22,9 +22,10 @@ function UpdateOutputExample {
 
     # Try live preview from first file
     $preview = ''
-    if ($script:CurrentPattern -and $script:CurrentPattern.Items.Count -gt 0) {
+    $patternItems = @($script:CurrentPattern.Items)
+    if ($script:CurrentPattern -and $patternItems.Count -gt 0) {
         try {
-            $item = $script:CurrentPattern.Items[0]
+            $item = $patternItems[0]
             $values = @{}
 
             # 1. Extract raw values from filename fields

@@ -43,7 +43,7 @@ function ScanCompliance {
         throw (T 'Err_SrcNotExist')
     }
 
-    $files = if ($ComplianceRecursive.IsChecked) {
+    $files = if ($Recursive.IsChecked) {
         @(Get-ChildItem -LiteralPath $src -File -Recurse)
     }
     else {
