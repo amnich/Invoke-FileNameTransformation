@@ -483,6 +483,10 @@ function ConvertTo-FNTConfig {
     else {
         $normalized.CustomTypeRules = @($normalized.CustomTypeRules)
     }
+    if (-not $normalized.PSObject.Properties['Theme'] -or $normalized.Theme -notin @('Light', 'Dark')) {
+        if ($normalized.PSObject.Properties['Theme']) { $normalized.Theme = 'Dark' }
+        else { $normalized | Add-Member -NotePropertyName Theme -NotePropertyValue 'Dark' }
+    }
     return $normalized
 }
 
@@ -495,6 +499,18 @@ function Set-FNTConfigLanguage {
 
     $normalized = ConvertTo-FNTConfig $Config
     $normalized.Language = $Language
+    return $normalized
+}
+
+function Set-FNTConfigTheme {
+    [CmdletBinding()]
+    param(
+        [AllowNull()]$Config,
+        [Parameter(Mandatory)][ValidateSet('Light', 'Dark')][string]$Theme
+    )
+
+    $normalized = ConvertTo-FNTConfig $Config
+    $normalized.Theme = $Theme
     return $normalized
 }
 
@@ -1009,4 +1025,4 @@ function Test-FNTNamingConvention {
     }
 }
 
-Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Test-FNTCustomTypeRules, ConvertTo-FNTProfile, Get-FNTFileMetadata, Test-FNTNamingConvention, Get-FNTNormalizedAuthorSegment
+Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Set-FNTConfigTheme, Test-FNTCustomTypeRules, ConvertTo-FNTProfile, Get-FNTFileMetadata, Test-FNTNamingConvention, Get-FNTNormalizedAuthorSegment

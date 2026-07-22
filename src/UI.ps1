@@ -1,4 +1,4 @@
-﻿# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
+# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
 # Dot-sourced by the main script; operates in $script: scope.
 
 #region Utility Functions
@@ -280,4 +280,106 @@ function ValidateFieldValues([hashtable]$values) {
     }
 }
 
+#endregion
+
+#region Theme Management
+Add-Type -TypeDefinition @"
+using System;
+using System.Runtime.InteropServices;
+public class DwmApi {
+    [DllImport("dwmapi.dll", PreserveSig = true)]
+    public static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+}
+"@ -ErrorAction Ignore
+
+function Set-WPFWindowTheme {
+    param(
+        [Parameter(Mandatory)][System.Windows.Window]$Window,
+        [Parameter(Mandatory)][ValidateSet('Light', 'Dark')][string]$Theme
+    )
+
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($Window)
+        if ($helper.Handle -ne [IntPtr]::Zero) {
+            $val = if ($Theme -eq 'Dark') { 1 } else { 0 }
+            [DwmApi]::DwmSetWindowAttribute($helper.Handle, 20, [ref]$val, 4) | Out-Null
+            [DwmApi]::DwmSetWindowAttribute($helper.Handle, 19, [ref]$val, 4) | Out-Null
+        }
+    }
+    catch {}
+
+    $palettes = @{
+        'Light' = @{
+            'BgWindow'           = '#F5F7FA'
+            'BgPanel'            = '#FFFFFF'
+            'BgHeader'           = '#E4EAF1'
+            'BgControl'          = '#FFFFFF'
+            'BgControlHover'     = '#EDF2F7'
+            'TextPrimary'        = '#1A202C'
+            'TextSecondary'      = '#52606D'
+            'TextMuted'          = '#718096'
+            'BorderBrush'        = '#CBD5E0'
+            'ControlBorder'      = '#CBD5E0'
+            'GridAltRow'         = '#EDF2F7'
+            'GridRowHover'       = '#E2E8F0'
+            'GridHeaderBg'       = '#EDF2F7'
+            'AccentColor'        = '#2B6CB0'
+            'AccentButtonBg'     = '#D6E9FC'
+            'AccentButtonFg'     = '#1A365D'
+            'SuccessButtonBg'    = '#C6EFCE'
+            'SuccessButtonFg'    = '#006100'
+            'RowSuccessBg'       = '#E8F5E9'
+            'RowErrorBg'         = '#FFE0E0'
+            'RowWarningBg'       = '#FFF3E0'
+            'PreviewBoxBg'       = '#FFFEF5'
+            'PreviewBoxBorder'   = '#E0D8B0'
+            'ListBoxSelectionBg' = '#3182CE'
+            'ListBoxSelectionFg' = '#FFFFFF'
+            'TabSelectedBg'      = '#FFFFFF'
+            'TabSelectedFg'      = '#2B6CB0'
+            'TabUnselectedFg'    = '#4A5568'
+        }
+        'Dark'  = @{
+            'BgWindow'           = '#121417'
+            'BgPanel'            = '#1E2228'
+            'BgHeader'           = '#181B20'
+            'BgControl'          = '#282C34'
+            'BgControlHover'     = '#323842'
+            'TextPrimary'        = '#E6EDF3'
+            'TextSecondary'      = '#A0AEC0'
+            'TextMuted'          = '#718096'
+            'BorderBrush'        = '#3A414D'
+            'ControlBorder'      = '#4A5568'
+            'GridAltRow'         = '#23272F'
+            'GridRowHover'       = '#2D333B'
+            'GridHeaderBg'       = '#252930'
+            'AccentColor'        = '#63B3ED'
+            'AccentButtonBg'     = '#2B4C7E'
+            'AccentButtonFg'     = '#EBF8FF'
+            'SuccessButtonBg'    = '#1E4620'
+            'SuccessButtonFg'    = '#C6F6D5'
+            'RowSuccessBg'       = '#17341A'
+            'RowErrorBg'         = '#4A1D1D'
+            'RowWarningBg'       = '#4A3515'
+            'PreviewBoxBg'       = '#1A202C'
+            'PreviewBoxBorder'   = '#4A5568'
+            'ListBoxSelectionBg' = '#2B6CB0'
+            'ListBoxSelectionFg' = '#FFFFFF'
+            'TabSelectedBg'      = '#1E2228'
+            'TabSelectedFg'      = '#63B3ED'
+            'TabUnselectedFg'    = '#A0AEC0'
+        }
+    }
+
+    $brushConverter = New-Object System.Windows.Media.BrushConverter
+    $selectedPalette = $palettes[$Theme]
+    foreach ($key in $selectedPalette.Keys) {
+        $hex = $selectedPalette[$key]
+        $brush = [System.Windows.Media.Brush]($brushConverter.ConvertFromString($hex))
+        if ($null -ne $brush) {
+            if ($brush.CanFreeze) { $brush.Freeze() }
+            $Window.Resources[$key] = $brush
+        }
+    }
+}
 #endregion

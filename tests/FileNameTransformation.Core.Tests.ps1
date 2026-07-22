@@ -179,7 +179,21 @@ Describe 'Configuration compatibility' {
 
         $config.Version | Should -Be 2
         $config.Language | Should -Be 'EN'
+        $config.Theme | Should -Be 'Dark'
         @($config.CustomTypeRules).Count | Should -Be 0
+    }
+
+    It 'supports changing theme setting cleanly' {
+        $source = [pscustomobject]@{
+            Version  = 2
+            Language = 'EN'
+            Theme    = 'Light'
+        }
+
+        $updated = Set-FNTConfigTheme -Config $source -Theme 'Dark'
+
+        $updated.Theme | Should -Be 'Dark'
+        $source.Theme | Should -Be 'Light'
     }
 
     It 'preserves custom rules and unknown settings when changing language' {

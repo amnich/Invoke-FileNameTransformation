@@ -502,4 +502,19 @@ if ($CustomRulesGrid) {
             }
         })
     }
+
+    if ($OpenCustomRulesDoc) {
+        $OpenCustomRulesDoc.Add_Click({
+            try {
+                $docPath = Join-Path $script:ScriptRoot 'CUSTOM_TYPE_RULES.md'
+                if (Test-Path -LiteralPath $docPath) {
+                    [System.Diagnostics.Process]::Start($docPath) | Out-Null
+                }
+                else {
+                    throw "File not found: $docPath"
+                }
+            }
+            catch { ErrorBox "Guide Error" $_ }
+        })
+    }
 }

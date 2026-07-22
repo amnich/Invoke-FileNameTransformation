@@ -82,9 +82,11 @@ if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 $script:ScriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
 $script:ConfigPath = Join-Path $script:ScriptRoot 'config.json'
 $script:CurrentLanguage = $null
+$script:CurrentTheme = 'Dark'
 $script:Config = [pscustomobject][ordered]@{
     Version         = 2
     Language        = $null
+    Theme           = 'Dark'
     CustomTypeRules = @()
 }
 $coreModulePath = Join-Path $script:ScriptRoot 'FileNameTransformation.Core.psm1'
@@ -101,6 +103,10 @@ if (Test-Path $script:ConfigPath) {
         if ($script:Config.Language -in @('PL', 'EN', 'DE')) {
             $script:CurrentLanguage = $script:Config.Language
             Write-Information "Using saved language: $script:CurrentLanguage"
+        }
+        if ($script:Config.Theme -in @('Light', 'Dark')) {
+            $script:CurrentTheme = $script:Config.Theme
+            Write-Information "Using saved theme: $script:CurrentTheme"
         }
     }
     catch {
@@ -262,10 +268,9 @@ try {
     $xamlDoc.SelectNodes('//*[@x:Name]', $ns) | ForEach-Object {
         $name = $_.GetAttribute('Name', 'http://schemas.microsoft.com/winfx/2006/xaml')
         $control = $window.FindName($name)
-        if ($null -eq $control) {
-            throw "XAML control '$name' was not created."
+        if ($null -ne $control) {
+            Set-Variable -Name $name -Value $control -Scope Script
         }
-        Set-Variable -Name $name -Value $control -Scope Script
     }
 }
 catch {
@@ -389,16 +394,42 @@ function UpdateUI {
 #endregion
 
 #region Initialization
-$LanguageSelector.Add_SelectionChanged({
-        if ($LanguageSelector.SelectedItem) {
-            $tag = $LanguageSelector.SelectedItem.Tag
-            if ($tag -and $tag -ne $script:CurrentLanguage) {
-                $script:Config = Set-FNTConfigLanguage -Config $script:Config -Language $tag
-                $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
-                [Windows.MessageBox]::Show((T 'Msg_ConfirmRestart'), (T 'Title_Info'), 'OK', 'Information') | Out-Null
-            }
-        }
+Set-WPFWindowTheme $window $script:CurrentTheme
+$window.Add_SourceInitialized({
+        Set-WPFWindowTheme $window $script:CurrentTheme
     })
+
+if ($LanguageSelector) {
+    $matchedLangItem = @($LanguageSelector.Items | Where-Object { $_.Tag -eq $script:CurrentLanguage })[0]
+    if ($matchedLangItem) { $LanguageSelector.SelectedItem = $matchedLangItem }
+    $LanguageSelector.Add_SelectionChanged({
+            if ($LanguageSelector.SelectedItem) {
+                $tag = $LanguageSelector.SelectedItem.Tag
+                if ($tag -and $tag -ne $script:CurrentLanguage) {
+                    $script:Config = Set-FNTConfigLanguage -Config $script:Config -Language $tag
+                    $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
+                    [Windows.MessageBox]::Show((T 'Msg_ConfirmRestart'), (T 'Title_Info'), 'OK', 'Information') | Out-Null
+                }
+            }
+        })
+}
+
+if ($ThemeSelector) {
+    $matchedThemeItem = @($ThemeSelector.Items | Where-Object { $_.Tag -eq $script:CurrentTheme })[0]
+    if ($matchedThemeItem) { $ThemeSelector.SelectedItem = $matchedThemeItem }
+    $ThemeSelector.Add_SelectionChanged({
+            if ($ThemeSelector.SelectedItem) {
+                $tag = $ThemeSelector.SelectedItem.Tag
+                if ($tag -and $tag -ne $script:CurrentTheme) {
+                    $script:CurrentTheme = $tag
+                    $script:Config = Set-FNTConfigTheme -Config $script:Config -Theme $tag
+                    $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
+                    Set-WPFWindowTheme $window $script:CurrentTheme
+                }
+            }
+        })
+}
+
 $LogText.Text = "Log: $script:LogPath"
 $FieldRole.SelectedIndex = 0
 RefreshProfiles
