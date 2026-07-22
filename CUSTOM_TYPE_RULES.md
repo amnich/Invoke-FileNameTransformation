@@ -23,6 +23,7 @@ Custom Type Rules extend the application's filename tokenizer and parser by reco
   - [Example 4: Service Desk Ticket ID](#example-4-service-desk-ticket-id)
   - [Example 5: Hardware Serial Number](#example-5-hardware-serial-number)
   - [Example 6: SKU Code with Version](#example-6-sku-code-with-version)
+- [Testing Custom Types (Interactive Demo Script)](#testing-custom-types-interactive-demo-script)
 - [Troubleshooting & Common Errors](#troubleshooting--common-errors)
 
 ---
@@ -259,6 +260,53 @@ Matches product stock keeping units with revision numbers (e.g., `SKU-AB12-v1`, 
   "AllowComposite": true
 }
 ```
+
+---
+
+## Testing Custom Types (Interactive Demo Script)
+
+To quickly test Custom Type Rules without creating test files manually, you can run the included setup script [`Setup-CustomTypeDemo.ps1`](file:///d:/Skrypty/Invoke-FileNameTransformation/Setup-CustomTypeDemo.ps1).
+
+### Quick Start Command
+
+Run the setup script in PowerShell:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Setup-CustomTypeDemo.ps1
+```
+
+### What the Setup Script Does
+
+1. **Creates Demo Directory & Test Files**: Generates a `Demo_CustomTypes` folder populated with sample files featuring realistic custom type naming formats (Department Codes, Invoices, Service Desk Tickets, Project IDs, and Hardware Serial Numbers).
+2. **Pre-configures `config.json`**: Automatically adds sample Custom Type Rules to `config.json` (and backs up any existing `config.json` to `config.json.bak`).
+3. **Generates Quick-Start Guide**: Creates a localized `README_TESTING.md` inside `Demo_CustomTypes` for easy reference during testing.
+
+### End-to-End Testing Walkthrough
+
+Once the script completes, follow these steps to test custom types in the tool:
+
+1. **Launch the Application**:
+   Run `Invoke-FileNameTransformation.ps1` in PowerShell or double-click `Invoke-FileNameTransformation.exe`.
+
+2. **Verify Loaded Rules (Tab 6)**:
+   - Click on **Tab 6: Custom Rules Management & Live Tester**.
+   - Review the newly configured custom type rules (`DeptCode`, `InvoiceNo`, `TicketID`, `ProjectID`, `HardwareSN`).
+   - Use the **Live Custom Rule Tester** to test sample inputs like `FIN-101` or `INV-202607-00123`.
+
+3. **Select the Demo Folder & Run Analysis (Tab 1)**:
+   - Go to **Tab 1: File Selection & Metadata**.
+   - Click **Browse** and select the generated `Demo_CustomTypes` folder.
+   - Click **Run Token Analysis**.
+   - The application will break down each filename and tag recognized tokens with types like `Custom:DeptCode`, `Custom:InvoiceNo`, `Custom:TicketID`, `DateTime`, etc.
+
+4. **Define Target Naming Convention (Tab 2)**:
+   - Go to **Tab 2: Transformation Rules**.
+   - Build a target naming pattern placing custom tokens in desired positions (e.g., rearrange `Custom:DeptCode` to field position 1).
+
+5. **Preview & Apply Transformation (Tab 3)**:
+   - Go to **Tab 3: Preview & Execute**.
+   - Click **Generate Preview** to review the proposed filename transformations.
+   - Click **Apply Transformation** to perform the file renaming.
 
 ---
 
