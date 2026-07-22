@@ -68,7 +68,7 @@ try {
         $localeContent = @{}
         foreach ($fileName in $localeFiles) {
                 $localeContent[[IO.Path]::GetFileNameWithoutExtension($fileName).ToUpperInvariant()] =
-                        Get-Content -LiteralPath (Join-Path $localeDirectory $fileName) -Raw -Encoding UTF8
+                Get-Content -LiteralPath (Join-Path $localeDirectory $fileName) -Raw -Encoding UTF8
         }
 
         # Runtime dependencies are embedded into the temporary script before ps2exe compiles it.
@@ -86,7 +86,7 @@ try {
                 throw 'Could not find the core module import block in the application script.'
         }
 
-        $replacement = [System.Text.RegularExpressions.MatchEvaluator]{ param($match) "`n$embeddedCore`n" }
+        $replacement = [System.Text.RegularExpressions.MatchEvaluator] { param($match) "`n$embeddedCore`n" }
         $mergedContent = [regex]::Replace($sourceContent, $bootstrapPattern, $replacement, 1)
 
         $xamlPayload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($xamlContent))
@@ -95,7 +95,7 @@ try {
         if ($mergedContent -notmatch $xamlPattern) {
                 throw 'Could not find the MainWindow.xaml load block in the application script.'
         }
-        $mergedContent = [regex]::Replace($mergedContent, $xamlPattern, [Text.RegularExpressions.MatchEvaluator]{ param($match) $embeddedXaml }, 1)
+        $mergedContent = [regex]::Replace($mergedContent, $xamlPattern, [Text.RegularExpressions.MatchEvaluator] { param($match) $embeddedXaml }, 1)
 
         $localeTranslationBlocks = $localeContent.Keys | Sort-Object | ForEach-Object {
                 $language = $_
@@ -137,23 +137,24 @@ function T([string]`$Key) {
 
         Set-Content -LiteralPath $temporarySourcePath -Value $mergedContent -Encoding UTF8
 
-        $signingCertificate = Get-ChildItem cert:\CurrentUser\my |
-                Where-Object EnhancedKeyUsageList -match '1.3.6.1.5.5.7.3.3' |
-                Where-Object Subject -like '*Mnich*' |
-                Sort-Object NotAfter -Descending |
-                Select-Object -First 1
-        if ($null -eq $signingCertificate) {
-                throw 'No suitable code-signing certificate was found in the current user certificate store.'
+        $signingCertificate = Get-ChildItem cert:\CurrentUser\my -ErrorAction SilentlyContinue |
+        Where-Object EnhancedKeyUsageList -match '1.3.6.1.5.5.7.3.3' |
+        Where-Object Subject -like '*Mnich*' |
+        Sort-Object NotAfter -Descending |
+        Select-Object -First 1
+        if ($null -ne $signingCertificate) {
+                $sourceSignature = Set-AuthenticodeSignature -Certificate $signingCertificate -IncludeChain All `
+                        -TimestampServer 'http://timestamp.sectigo.com' -Force -FilePath $temporarySourcePath
+                if ($sourceSignature.Status -ne 'Valid') {
+                        Write-Warning "Temporary source signing status: $($sourceSignature.Status)"
+                }
         }
-
-        $sourceSignature = Set-AuthenticodeSignature -Certificate $signingCertificate -IncludeChain All `
-                -TimestampServer 'http://timestamp.sectigo.com' -Force -FilePath $temporarySourcePath
-        if ($sourceSignature.Status -ne 'Valid') {
-                throw "Temporary source signing failed: $($sourceSignature.Status)"
+        else {
+                Write-Warning 'No suitable code-signing certificate was found in the current user certificate store. Compilation will proceed without code signing.'
         }
         $inputPath = $temporarySourcePath
 
-        $Version = "1.0"
+        $Version = "2.0"
         Import-Module ps2exe
 
         $exePath = if ($DebugBuild) {
@@ -180,10 +181,18 @@ function T([string]`$Key) {
         Invoke-ps2exe -inputFile $inputPath `
                 @ps2exeParameters
 
-        $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
-        $thumbprint = $signingCertificate.Thumbprint
-        $timestampUrl = "http://timestamp.sectigo.com"
-        & $signtool sign /sha1 $thumbprint /tr $timestampUrl /td SHA256 /fd SHA256 $exePath
+        if ($null -ne $signingCertificate) {
+                $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
+                if (-not (Test-Path -LiteralPath $signtool -PathType Leaf)) {
+                        $signtoolCmd = Get-Command signtool.exe -ErrorAction SilentlyContinue
+                        if ($signtoolCmd) { $signtool = $signtoolCmd.Source }
+                }
+                if (Test-Path -LiteralPath $signtool -PathType Leaf) {
+                        $thumbprint = $signingCertificate.Thumbprint
+                        $timestampUrl = "http://timestamp.sectigo.com"
+                        & $signtool sign /sha1 $thumbprint /tr $timestampUrl /td SHA256 /fd SHA256 $exePath
+                }
+        }
 }
 finally {
         if (Test-Path -LiteralPath $temporarySourcePath) {
