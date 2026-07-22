@@ -21,8 +21,20 @@ $DestinationPathSuggestionList.Add_SelectionChanged({ Apply-PathSuggestion $Dest
 
 # --- Tab 0: Compliance ---
 if ($ComplianceScan -and $ComplianceFixSelected -and $ComplianceExtFilter) {
+    function Invoke-ComplianceScan {
+        $previousCursor = $window.Cursor
+        try {
+            $window.Cursor = [Windows.Input.Cursors]::Wait
+            UpdateUI
+            ScanCompliance
+        }
+        finally {
+            $window.Cursor = $previousCursor
+        }
+    }
+
     $ComplianceScan.Add_Click({
-            try { ScanCompliance; SetStatus (T 'Status_ComplianceDone') }
+            try { Invoke-ComplianceScan; SetStatus (T 'Status_ComplianceDone') }
             catch { ErrorBox (T 'Err_Compliance') $_ }
         })
     $ComplianceFixSelected.Add_Click({
@@ -30,7 +42,7 @@ if ($ComplianceScan -and $ComplianceFixSelected -and $ComplianceExtFilter) {
             catch { ErrorBox (T 'Err_Compliance') $_ }
         })
     $ComplianceExtFilter.Add_SelectionChanged({
-            try { ScanCompliance } catch {}
+                try { Invoke-ComplianceScan } catch {}
         })
 }
 
