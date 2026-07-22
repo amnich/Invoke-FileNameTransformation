@@ -33,10 +33,19 @@ Run the script from PowerShell in the repository folder:
 .\Invoke-FileNameTransformation.ps1
 ```
 
-For a command prompt, shortcut, or automation scenario, start it explicitly in STA mode:
+For a command prompt, shortcut, or automation scenario:
 
 ```cmd
-powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
+powershell.exe -NoProfile -File ".\Invoke-FileNameTransformation.ps1"
+```
+
+The development script launches the GUI in a fresh STA child process for every normal invocation. This lets you close the application, change the language, and start it again from the same PowerShell session without reusing WPF state. `-IsolatedHost` is internal and should not be specified manually.
+
+Use the standard PowerShell help commands for the script and packager:
+
+```powershell
+Get-Help .\Invoke-FileNameTransformation.ps1 -Full
+Get-Help .\ps2exe.ps1 -Full
 ```
 
 ## Typical Workflow
@@ -96,7 +105,7 @@ Custom named regex types are configured in `config.json`. Patterns must match th
 }
 ```
 
-Changing the UI language preserves custom rules. Invalid custom patterns are reported at startup.
+The language selector writes the selected language to the script-local `config.json`; that valid saved value takes precedence over the operating system language at the next start. Changing the UI language preserves custom rules. Invalid custom patterns are reported at startup.
 Custom rule IDs must start with a letter and may contain letters, numbers, dots, underscores, and hyphens. IDs are case-insensitively unique. Invalid or duplicate rules are reported separately at startup and skipped without disabling built-in recognition. `DisplayName` is optional and defaults to `Id`.
 
 Custom rules remain file-configured in this iteration. Edit `config.json` before starting the application; an in-app rule management dialog is not currently planned.
@@ -133,7 +142,7 @@ Expected results:
 
 ## Notes
 
-- Profiles, logs, and the language configuration are stored under the user's AppData folder.
+- `config.json`, including the selected language and custom type rules, is read from the development script directory. Profiles and logs are stored under the user's AppData folder.
 - Existing profiles without a schema version are migrated in memory when loaded. They are not overwritten automatically.
 - If AppData is unavailable, the script falls back to the script directory or a temporary folder.
 - Preserving the folder structure is enabled by default. When it is disabled, files from different subfolders can produce duplicate destination names; the preview flags those collisions before execution.

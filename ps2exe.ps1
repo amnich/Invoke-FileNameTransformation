@@ -1,3 +1,29 @@
+<#
+.SYNOPSIS
+        Builds a signed File Name Transformer executable with ps2exe.
+
+.DESCRIPTION
+        Embeds the core module, WPF XAML, translation files, and source scripts into a temporary PowerShell
+        file, signs it, and compiles it as an STA executable. The executable therefore does not require the
+        development source files at runtime.
+
+.PARAMETER DebugBuild
+        Creates Invoke-FileNameTransformation.debug.exe with a console and ps2exe debug support. Without this
+        switch, creates Invoke-FileNameTransformation.exe without a console.
+
+.EXAMPLE
+        .\ps2exe.ps1
+        Builds and signs the production executable.
+
+.EXAMPLE
+        .\ps2exe.ps1 -DebugBuild
+        Builds and signs a debug executable with a visible console.
+
+.NOTES
+        Requires the ps2exe module, a suitable code-signing certificate for the current user, signtool.exe,
+        and the configured BGH icon file. The generated executable is signed during this process.
+#>
+
 [CmdletBinding()]
 param(
         [switch]$DebugBuild
