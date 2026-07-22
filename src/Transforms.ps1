@@ -1,5 +1,45 @@
-# Transforms.ps1 — Transform engine and dialog for adding per-field transformations.
+﻿# Transforms.ps1 — Transform engine and dialog for adding per-field transformations.
 # Dot-sourced by the main script; operates in $script: scope.
+
+function ConvertTo-FNTAscii([string]$inputString) {
+    if ([string]::IsNullOrEmpty($inputString)) { return '' }
+
+    $map = [System.Collections.Generic.Dictionary[string, string]]::new([System.StringComparer]::Ordinal)
+    # Polish
+    $map['ą'] = 'a'; $map['ć'] = 'c'; $map['ę'] = 'e'; $map['ł'] = 'l'; $map['ń'] = 'n'; $map['ó'] = 'o'; $map['ś'] = 's'; $map['ź'] = 'z'; $map['ż'] = 'z'
+    $map['Ą'] = 'A'; $map['Ć'] = 'C'; $map['Ę'] = 'E'; $map['Ł'] = 'L'; $map['Ń'] = 'N'; $map['Ó'] = 'O'; $map['Ś'] = 'S'; $map['Ź'] = 'Z'; $map['Ż'] = 'Z'
+    # German
+    $map['ä'] = 'ae'; $map['ö'] = 'oe'; $map['ü'] = 'ue'; $map['ß'] = 'ss'
+    $map['Ä'] = 'Ae'; $map['Ö'] = 'Oe'; $map['Ü'] = 'Ue'
+    # French
+    $map['é'] = 'e'; $map['è'] = 'e'; $map['ê'] = 'e'; $map['ë'] = 'e'
+    $map['É'] = 'E'; $map['È'] = 'E'; $map['Ê'] = 'E'; $map['Ë'] = 'E'
+    $map['à'] = 'a'; $map['â'] = 'a'; $map['À'] = 'A'; $map['Â'] = 'A'
+    $map['ç'] = 'c'; $map['Ç'] = 'C'
+    # Spanish
+    $map['ñ'] = 'n'; $map['Ñ'] = 'N'
+
+    $sb = New-Object System.Text.StringBuilder
+    foreach ($char in $inputString.ToCharArray()) {
+        $strChar = [string]$char
+        if ($map.ContainsKey($strChar)) {
+            [void]$sb.Append($map[$strChar])
+        }
+        else {
+            [void]$sb.Append($char)
+        }
+    }
+
+    $normalized = $sb.ToString().Normalize([System.Text.NormalizationForm]::FormD)
+    $cleanSb = New-Object System.Text.StringBuilder
+    foreach ($c in $normalized.ToCharArray()) {
+        $uc = [System.Globalization.CharUnicodeInfo]::GetUnicodeCategory($c)
+        if ($uc -ne [System.Globalization.UnicodeCategory]::NonSpacingMark) {
+            [void]$cleanSb.Append($c)
+        }
+    }
+    return $cleanSb.ToString().Normalize([System.Text.NormalizationForm]::FormC)
+}
 
 function ApplyTransforms([string]$value, $transforms) {
     foreach ($t in $transforms) {
@@ -23,6 +63,24 @@ function ApplyTransforms([string]$value, $transforms) {
                 }
                 'Replace' {
                     $value = $value.Replace($t.OldText, $t.NewText)
+                }
+                'Transliterate' {
+                    $value = ConvertTo-FNTAscii $value
+                }
+                'RegexReplace' {
+                    $value = [regex]::Replace($value, $t.Pattern, $t.Replacement)
+                }
+                'Expression' {
+                    if ($t.Expression) {
+                        $sb = [scriptblock]::Create($t.Expression)
+                        $value = [string]($sb.InvokeWithContext($null, @([psvariable]::new('_', $value)), @($value)))
+                    }
+                }
+                'Sequence' {
+                    $seqVal = if ($null -ne $t.CurrentIndex) { [int]$t.CurrentIndex } else { [int]$t.Start }
+                    $width = if ($t.Width) { [int]$t.Width } else { 1 }
+                    $value = $seqVal.ToString().PadLeft($width, '0')
+                    $t.CurrentIndex = $seqVal + (if ($t.Step) { [int]$t.Step } else { 1 })
                 }
                 'Case' {
                     switch ($t.Mode) {
@@ -77,7 +135,7 @@ function ApplyTransforms([string]$value, $transforms) {
 function ShowTransformDialog($field) {
     $form = New-Object Windows.Forms.Form
     $form.Text = (T 'Title_AddTransform')
-    $form.Size = New-Object Drawing.Size(520, 300)
+    $form.Size = New-Object Drawing.Size(520, 320)
     $form.StartPosition = 'CenterParent'
     $form.Font = New-Object Drawing.Font('Segoe UI', 9)
     $form.FormBorderStyle = 'FixedDialog'
@@ -90,7 +148,6 @@ function ShowTransformDialog($field) {
         }
     }
 
-    # Type label and combobox
     $lblType = New-Object Windows.Forms.Label
     $lblType.Text = (T 'Txt_TransformType')
     $lblType.Location = New-Object Drawing.Point(15, 18)
@@ -101,22 +158,32 @@ function ShowTransformDialog($field) {
     $cboType.DropDownStyle = 'DropDownList'
     $cboType.Location = New-Object Drawing.Point(160, 15)
     $cboType.Size = New-Object Drawing.Size(320, 25)
-    $cboType.Items.AddRange(@(
-            (T 'Tr_Substring'),
-            (T 'Tr_DateFormat'),
-            (T 'Tr_Replace'),
-            (T 'Tr_Case'),
-            (T 'Tr_Pad')
-        ))
 
-    # Number/Math transform is only applicable to numeric field types
+    $transformTypeKeys = [ordered]@{
+        'Substring'     = (T 'Tr_Substring')
+        'DateFormat'    = (T 'Tr_DateFormat')
+        'Replace'       = (T 'Tr_Replace')
+        'Transliterate' = (T 'Tr_Transliterate')
+        'RegexReplace'  = (T 'Tr_RegexReplace')
+        'Expression'    = (T 'Tr_Expression')
+        'Sequence'      = (T 'Tr_Sequence')
+        'Case'          = (T 'Tr_Case')
+        'Pad'           = (T 'Tr_Pad')
+    }
+
     $effectiveTypeId = if ($field) {
         $resolvedType = GetResolvedFieldType $field
         [string]$resolvedType.TypeId
-    } else { '' }
+    }
+    else { '' }
     $isMathField = $effectiveTypeId -in @('Integer', 'Decimal')
     if ($isMathField) {
-        [void]$cboType.Items.Add((T 'Tr_Number'))
+        $transformTypeKeys['Number'] = (T 'Tr_Number')
+    }
+
+    $keyArray = @($transformTypeKeys.Keys)
+    foreach ($k in $keyArray) {
+        [void]$cboType.Items.Add($transformTypeKeys[$k])
     }
     $form.Controls.Add($cboType)
 
@@ -139,7 +206,6 @@ function ShowTransformDialog($field) {
         $paramControls += $txt
     }
 
-    # Alternative ComboBox for param1 (Case mode, Pad side)
     $cboParam1 = New-Object Windows.Forms.ComboBox
     $cboParam1.DropDownStyle = 'DropDownList'
     $cboParam1.Location = New-Object Drawing.Point(160, 57)
@@ -147,44 +213,62 @@ function ShowTransformDialog($field) {
     $cboParam1.Visible = $false
     $form.Controls.Add($cboParam1)
 
-    # Update visible parameters when type changes
     $cboType.Add_SelectedIndexChanged({
             foreach ($l in $paramLabels) { $l.Visible = $false }
             foreach ($c in $paramControls) { $c.Visible = $false; $c.Text = '' }
             $cboParam1.Visible = $false
             $cboParam1.Items.Clear()
 
-            switch ($cboType.SelectedIndex) {
-                0 {
-                    # Substring
+            if ($cboType.SelectedIndex -lt 0) { return }
+            $selectedKey = $keyArray[$cboType.SelectedIndex]
+
+            switch ($selectedKey) {
+                'Substring' {
                     $paramLabels[0].Text = (T 'Tr_PosStart'); $paramLabels[0].Visible = $true
                     $paramControls[0].Text = '0'; $paramControls[0].Visible = $true
                     $paramLabels[1].Text = (T 'Tr_CharCount'); $paramLabels[1].Visible = $true
                     $paramControls[1].Visible = $true
                 }
-                1 {
-                    # DateFormat
+                'DateFormat' {
                     $paramLabels[0].Text = (T 'Tr_FmtIn'); $paramLabels[0].Visible = $true
                     $paramControls[0].Text = $defaultDateInputFormat; $paramControls[0].Visible = $true
                     $paramLabels[1].Text = (T 'Tr_FmtOut'); $paramLabels[1].Visible = $true
                     $paramControls[1].Visible = $true
                 }
-                2 {
-                    # Replace
+                'Replace' {
                     $paramLabels[0].Text = (T 'Tr_Search'); $paramLabels[0].Visible = $true
                     $paramControls[0].Visible = $true
                     $paramLabels[1].Text = (T 'Tr_NewTxt'); $paramLabels[1].Visible = $true
                     $paramControls[1].Visible = $true
                 }
-                3 {
-                    # Case
+                'Transliterate' {
+                    # No params needed
+                }
+                'RegexReplace' {
+                    $paramLabels[0].Text = (T 'Tr_RegexPattern'); $paramLabels[0].Visible = $true
+                    $paramControls[0].Visible = $true
+                    $paramLabels[1].Text = (T 'Tr_Replacement'); $paramLabels[1].Visible = $true
+                    $paramControls[1].Visible = $true
+                }
+                'Expression' {
+                    $paramLabels[0].Text = (T 'Tr_ExprCode'); $paramLabels[0].Visible = $true
+                    $paramControls[0].Text = '$_'; $paramControls[0].Visible = $true
+                }
+                'Sequence' {
+                    $paramLabels[0].Text = (T 'Tr_SeqStart'); $paramLabels[0].Visible = $true
+                    $paramControls[0].Text = '1'; $paramControls[0].Visible = $true
+                    $paramLabels[1].Text = (T 'Tr_SeqStep'); $paramLabels[1].Visible = $true
+                    $paramControls[1].Text = '1'; $paramControls[1].Visible = $true
+                    $paramLabels[2].Text = (T 'Tr_SeqWidth'); $paramLabels[2].Visible = $true
+                    $paramControls[2].Text = '3'; $paramControls[2].Visible = $true
+                }
+                'Case' {
                     $paramLabels[0].Text = (T 'Tr_Mode'); $paramLabels[0].Visible = $true
                     $cboParam1.Items.AddRange(@((T 'Tr_Upper'), (T 'Tr_Lower'), (T 'Tr_Title')))
                     $cboParam1.SelectedIndex = 0
                     $cboParam1.Visible = $true
                 }
-                4 {
-                    # Pad
+                'Pad' {
                     $paramLabels[0].Text = (T 'Tr_Side'); $paramLabels[0].Visible = $true
                     $cboParam1.Items.AddRange(@((T 'Tr_Left'), (T 'Tr_Right')))
                     $cboParam1.SelectedIndex = 0
@@ -194,8 +278,7 @@ function ShowTransformDialog($field) {
                     $paramLabels[2].Text = (T 'Tr_TargetLen'); $paramLabels[2].Visible = $true
                     $paramControls[2].Visible = $true
                 }
-                5 {
-                    # Number / Math
+                'Number' {
                     $paramLabels[0].Text = (T 'Tr_Operation'); $paramLabels[0].Visible = $true
                     $cboParam1.Items.AddRange(@(
                             (T 'Tr_OpAdd'), (T 'Tr_OpSubtract'), (T 'Tr_OpMultiply'), (T 'Tr_OpDivide'), (T 'Tr_OpRound')
@@ -210,10 +293,9 @@ function ShowTransformDialog($field) {
             }
         })
 
-    # Add button
     $btnAdd = New-Object Windows.Forms.Button
     $btnAdd.Text = (T 'Btn_Add')
-    $btnAdd.Location = New-Object Drawing.Point(400, 220)
+    $btnAdd.Location = New-Object Drawing.Point(400, 235)
     $btnAdd.Size = New-Object Drawing.Size(80, 30)
     $form.Controls.Add($btnAdd)
 
@@ -221,9 +303,11 @@ function ShowTransformDialog($field) {
 
     $btnAdd.Add_Click({
             try {
-                $result = switch ($cboType.SelectedIndex) {
-                    0 {
-                        # Substring
+                if ($cboType.SelectedIndex -lt 0) { throw (T 'Err_SelTransform') }
+                $selectedKey = $keyArray[$cboType.SelectedIndex]
+
+                $result = switch ($selectedKey) {
+                    'Substring' {
                         $s = [int]$paramControls[0].Text
                         $l = [int]$paramControls[1].Text
                         if ($l -le 0) { throw (T 'Err_CharCount') }
@@ -232,8 +316,7 @@ function ShowTransformDialog($field) {
                             Display = "$(T 'Disp_Substr') $s, $l $(T 'Disp_Chars')"
                         }
                     }
-                    1 {
-                        # DateFormat
+                    'DateFormat' {
                         $inf = $paramControls[0].Text.Trim()
                         $outf = $paramControls[1].Text.Trim()
                         if (-not $inf -or -not $outf) { throw (T 'Err_BothFmt') }
@@ -242,8 +325,7 @@ function ShowTransformDialog($field) {
                             Display = "$(T 'Disp_Date') $inf → $outf"
                         }
                     }
-                    2 {
-                        # Replace
+                    'Replace' {
                         $old = $paramControls[0].Text
                         $new = $paramControls[1].Text
                         if ($old -eq '') { throw (T 'Err_SearchTxt') }
@@ -252,8 +334,39 @@ function ShowTransformDialog($field) {
                             Display = "$(T 'Disp_Replace') '$old' → '$new'"
                         }
                     }
-                    3 {
-                        # Case
+                    'Transliterate' {
+                        [pscustomobject]@{
+                            Type    = 'Transliterate'
+                            Display = "$(T 'Disp_Transliterate')"
+                        }
+                    }
+                    'RegexReplace' {
+                        $pat = $paramControls[0].Text
+                        $rep = $paramControls[1].Text
+                        if (-not $pat) { throw (T 'Err_SearchTxt') }
+                        [pscustomobject]@{
+                            Type = 'RegexReplace'; Pattern = $pat; Replacement = $rep
+                            Display = "Regex: '$pat' → '$rep'"
+                        }
+                    }
+                    'Expression' {
+                        $expr = $paramControls[0].Text.Trim()
+                        if (-not $expr) { throw (T 'Err_SearchTxt') }
+                        [pscustomobject]@{
+                            Type = 'Expression'; Expression = $expr
+                            Display = "Expr: $expr"
+                        }
+                    }
+                    'Sequence' {
+                        $start = [int]$paramControls[0].Text
+                        $step = [int]$paramControls[1].Text
+                        $width = [int]$paramControls[2].Text
+                        [pscustomobject]@{
+                            Type = 'Sequence'; Start = $start; Step = $step; Width = $width; CurrentIndex = $start
+                            Display = "Seq: Start=$start Step=$step W=$width"
+                        }
+                    }
+                    'Case' {
                         if ($cboParam1.SelectedIndex -lt 0) { throw (T 'Err_SelMode') }
                         $mode = @('Upper', 'Lower', 'Title')[$cboParam1.SelectedIndex]
                         $modeText = [string]$cboParam1.SelectedItem
@@ -262,8 +375,7 @@ function ShowTransformDialog($field) {
                             Display = "$(T 'Disp_Case') $modeText"
                         }
                     }
-                    4 {
-                        # Pad
+                    'Pad' {
                         if ($cboParam1.SelectedIndex -lt 0) { throw (T 'Err_SelSide') }
                         $side = @('Left', 'Right')[$cboParam1.SelectedIndex]
                         $ch = $paramControls[1].Text
@@ -276,8 +388,7 @@ function ShowTransformDialog($field) {
                             Display = "$(T 'Disp_Pad') '$ch' $sideText $(T 'Disp_To') $width $(T 'Disp_Chars')"
                         }
                     }
-                    5 {
-                        # Number / Math
+                    'Number' {
                         if ($cboParam1.SelectedIndex -lt 0) { throw (T 'Err_SelOperation') }
                         $operation = @('Add', 'Subtract', 'Multiply', 'Divide', 'Round')[$cboParam1.SelectedIndex]
                         $operationText = [string]$cboParam1.SelectedItem

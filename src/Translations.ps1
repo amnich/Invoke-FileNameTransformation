@@ -1,4 +1,4 @@
-# Translations.ps1 — Loads locale JSON files and defines the T() lookup function.
+﻿# Translations.ps1 — Loads locale JSON files and defines the T() lookup function.
 # Dot-sourced by the main script; operates in $script: scope.
 
 $script:Translations = @{}

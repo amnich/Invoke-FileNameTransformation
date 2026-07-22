@@ -1,6 +1,40 @@
 # Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
 # Dot-sourced by the main script; operates in $script: scope.
 
+function Read-FNTDictionaryData([string]$path, [string]$delimiter) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
+    $ext = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
+
+    if ($ext -eq '.json') {
+        try {
+            $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+            $json = $raw | ConvertFrom-Json
+            if ($json -is [System.Array]) { return @($json) }
+            elseif ($json -is [PSCustomObject]) { return @($json) }
+        } catch { return @() }
+    }
+    elseif ($ext -eq '.xml') {
+        try {
+            [xml]$xml = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+            $root = $xml.DocumentElement
+            $list = New-Object System.Collections.Generic.List[pscustomobject]
+            foreach ($child in $root.ChildNodes) {
+                $obj = [ordered]@{}
+                foreach ($sub in $child.ChildNodes) {
+                    $obj[$sub.Name] = $sub.InnerText
+                }
+                foreach ($attr in $child.Attributes) {
+                    $obj["@" + $attr.Name] = $attr.Value
+                }
+                $list.Add([pscustomobject]$obj)
+            }
+            return $list.ToArray()
+        } catch { return @() }
+    }
+
+    return @(Import-Csv -LiteralPath $path -Delimiter $delimiter)
+}
+
 function RefreshFieldSelector {
     $names = @($script:Fields | ForEach-Object { $_.Name })
     $prev = $FieldSelector.SelectedItem
@@ -34,16 +68,24 @@ function UpdateOutputExample {
                 }
             }
             $meta = Get-FNTFileMetadata -Path $item.File.FullName
-            $values[(T 'Name_MetaDate')] = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
-            $values[(T 'Name_MetaAuthor')] = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
+            $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
+            $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
+            $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
+            $values[(T 'Name_MetaDateTaken')]  = if ($meta.DateTakenStr) { $meta.DateTakenStr } else { '' }
+            $values[(T 'Name_MetaDimensions')] = if ($meta.Dimensions) { $meta.Dimensions } else { '' }
+            $values[(T 'Name_MetaCamera')]     = if ($meta.Camera) { $meta.Camera } else { '' }
+            $values[(T 'Name_MetaAudioArtist')]= if ($meta.AudioArtist) { $meta.AudioArtist } else { '' }
+            $values[(T 'Name_MetaDocCreator')] = if ($meta.DocCreator) { $meta.DocCreator } else { '' }
+            $values[(T 'Name_MetaHashMD5')]    = if ($meta.HashMD5) { $meta.HashMD5 } else { '' }
+            $values[(T 'Name_MetaHashSHA256')] = if ($meta.HashSHA256) { $meta.HashSHA256 } else { '' }
             ValidateFieldValues $values
 
             # 2. Apply mappings (in order, allows chaining)
             foreach ($m in $script:Mappings) {
                 if (-not (Test-Path $m.Path)) { continue }
-                $csv = Import-Csv -LiteralPath $m.Path -Delimiter $m.Delimiter
+                $data = Read-FNTDictionaryData -path $m.Path -delimiter $m.Delimiter
                 $inputVal = [string]$values[$m.InputField]
-                $match = $csv | Where-Object {
+                $match = $data | Where-Object {
                     ([string]$_.($m.KeyColumn)).Trim() -eq $inputVal
                 } | Select-Object -First 1
                 if ($match) {
@@ -114,7 +156,8 @@ function FullBuildPreview {
             throw "$(T 'Err_MissMapFile') $($def.Path)"
         }
         $h = @{}
-        Import-Csv -LiteralPath $def.Path -Delimiter $def.Delimiter | ForEach-Object {
+        $data = Read-FNTDictionaryData -path $def.Path -delimiter $def.Delimiter
+        $data | ForEach-Object {
             $k = ([string]$_.($def.KeyColumn)).Trim()
             if ($h.ContainsKey($k)) {
                 throw "$(T 'Err_DupKey') '$k' $(T 'Err_InMap') '$($def.Name)'."
@@ -165,8 +208,16 @@ function FullBuildPreview {
                 }
             }
             $meta = Get-FNTFileMetadata -Path $item.File.FullName
-            $values[(T 'Name_MetaDate')] = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
-            $values[(T 'Name_MetaAuthor')] = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
+            $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
+            $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
+            $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
+            $values[(T 'Name_MetaDateTaken')]  = if ($meta.DateTakenStr) { $meta.DateTakenStr } else { '' }
+            $values[(T 'Name_MetaDimensions')] = if ($meta.Dimensions) { $meta.Dimensions } else { '' }
+            $values[(T 'Name_MetaCamera')]     = if ($meta.Camera) { $meta.Camera } else { '' }
+            $values[(T 'Name_MetaAudioArtist')]= if ($meta.AudioArtist) { $meta.AudioArtist } else { '' }
+            $values[(T 'Name_MetaDocCreator')] = if ($meta.DocCreator) { $meta.DocCreator } else { '' }
+            $values[(T 'Name_MetaHashMD5')]    = if ($meta.HashMD5) { $meta.HashMD5 } else { '' }
+            $values[(T 'Name_MetaHashSHA256')] = if ($meta.HashSHA256) { $meta.HashSHA256 } else { '' }
             ValidateFieldValues $values
 
             # 2. Apply mappings (in order)

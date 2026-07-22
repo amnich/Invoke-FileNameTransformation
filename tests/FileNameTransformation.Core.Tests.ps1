@@ -481,3 +481,54 @@ Describe 'Get-FNTNormalizedAuthorSegment' {
         Get-FNTNormalizedAuthorSegment $Input | Should -Be $Expected
     }
 }
+
+Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
+    BeforeAll {
+        . (Join-Path $PSScriptRoot '..\src\Mappings.ps1')
+    }
+
+    It 'returns extended metadata schema from Get-FNTFileMetadata' {
+        $testFile = [System.IO.Path]::GetTempFileName()
+        try {
+            Set-Content -LiteralPath $testFile -Value "Test Content" -Encoding UTF8
+            $meta = Get-FNTFileMetadata -Path $testFile
+            $meta.PSObject.Properties['CreationDateStr'] | Should -Not -BeNullOrEmpty
+            $meta.PSObject.Properties['HashMD5'] | Should -Not -BeNullOrEmpty
+            $meta.HashMD5.Length | Should -Be 32
+            $meta.HashSHA256.Length | Should -Be 64
+        }
+        finally {
+            Remove-Item $testFile -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'reads dictionary headers from JSON file' {
+        $jsonFile = [System.IO.Path]::GetTempFileName() + '.json'
+        try {
+            $jsonContent = '[{"DepartmentCode":"IT", "DepartmentName":"Information Technology"}]'
+            Set-Content -LiteralPath $jsonFile -Value $jsonContent -Encoding UTF8
+            $headers = Get-FNTDictionaryHeaders $jsonFile
+            $headers.Format | Should -Be 'JSON'
+            $headers.Headers | Should -Contain 'DepartmentCode'
+            $headers.Headers | Should -Contain 'DepartmentName'
+        }
+        finally {
+            Remove-Item $jsonFile -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'reads dictionary headers from XML file' {
+        $xmlFile = [System.IO.Path]::GetTempFileName() + '.xml'
+        try {
+            $xmlContent = '<Root><Item Code="DEV" Title="Developer"/></Root>'
+            Set-Content -LiteralPath $xmlFile -Value $xmlContent -Encoding UTF8
+            $headers = Get-FNTDictionaryHeaders $xmlFile
+            $headers.Format | Should -Be 'XML'
+            $headers.Headers | Should -Contain 'Title'
+            $headers.Headers | Should -Contain '@Code'
+        }
+        finally {
+            Remove-Item $xmlFile -ErrorAction SilentlyContinue
+        }
+    }
+}

@@ -382,6 +382,69 @@
           </DockPanel>
         </TabItem>
 
+        <!-- ========== 6. Custom Rules ========== -->
+        <TabItem Header="{t:Tab_CustomRules}">
+          <Grid Margin="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="3*"/>
+              <ColumnDefinition Width="2*"/>
+            </Grid.ColumnDefinitions>
+
+            <!-- Left side: Custom rules table -->
+            <GroupBox Grid.Column="0" Header="{t:Header_CustomRules}">
+              <DockPanel>
+                <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
+                  <Button x:Name="CustomRuleNew" Content="{t:Btn_NewRule}"/>
+                  <Button x:Name="CustomRuleDelete" Content="{t:Btn_Delete}"/>
+                  <Button x:Name="CustomRuleSaveConfig" Content="{t:Btn_Save_Config}" Background="#D6E9FC"/>
+                </WrapPanel>
+                <DataGrid x:Name="CustomRulesGrid" SelectionMode="Single">
+                  <DataGrid.Columns>
+                    <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="110"/>
+                    <DataGridTextColumn Header="{t:Col_DisplayName}" Binding="{Binding DisplayName}" Width="130"/>
+                    <DataGridTextColumn Header="{t:Col_Pattern}" Binding="{Binding Pattern}" Width="2*"/>
+                    <DataGridCheckBoxColumn Header="{t:Col_Enabled}" Binding="{Binding Enabled}" Width="65"/>
+                    <DataGridCheckBoxColumn Header="{t:Col_AllowComposite}" Binding="{Binding AllowComposite}" Width="105"/>
+                  </DataGrid.Columns>
+                </DataGrid>
+              </DockPanel>
+            </GroupBox>
+
+            <!-- Right side: Edit and Live Regex Testing Form -->
+            <GroupBox Grid.Column="1" Header="{t:Header_EditCustomRule}">
+              <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="6">
+                  <TextBlock Text="Rule ID:" Margin="0,2,0,2" FontWeight="SemiBold"/>
+                  <TextBox x:Name="CustomRuleId"/>
+
+                  <TextBlock Text="{t:Col_DisplayName}:" Margin="0,6,0,2" FontWeight="SemiBold"/>
+                  <TextBox x:Name="CustomRuleDisplayName"/>
+
+                  <TextBlock Text="Regex Pattern:" Margin="0,6,0,2" FontWeight="SemiBold"/>
+                  <TextBox x:Name="CustomRulePattern" FontFamily="Consolas"/>
+
+                  <CheckBox x:Name="CustomRuleEnabled" Content="{t:Col_Enabled}" IsChecked="True" Margin="4,8,4,4"/>
+                  <CheckBox x:Name="CustomRuleAllowComposite" Content="{t:Col_AllowComposite}" Margin="4,2,4,8"/>
+
+                  <Button x:Name="CustomRuleApply" Content="{t:Btn_ApplyRule}" Margin="0,6,0,8"/>
+
+                  <Separator Margin="0,8"/>
+
+                  <!-- Interactive Live Regex Testing Section -->
+                  <TextBlock Text="{t:Header_TestCustomRule}" FontWeight="Bold" Margin="0,4,0,4"/>
+                  <TextBlock Text="{t:Txt_TestSampleInput}" Margin="0,2,0,2"/>
+                  <TextBox x:Name="CustomRuleTestInput" Text="Report_2026-01-16"/>
+                  <Button x:Name="CustomRuleTestBtn" Content="{t:Btn_TestRule}" Margin="0,6,0,6"/>
+
+                  <Border Background="#F7FAFC" BorderBrush="#CBD5E0" BorderThickness="1" Padding="8" CornerRadius="4" Margin="0,4,0,0">
+                    <TextBlock x:Name="CustomRuleTestResult" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"/>
+                  </Border>
+                </StackPanel>
+              </ScrollViewer>
+            </GroupBox>
+          </Grid>
+        </TabItem>
+
       </TabControl>
     </Grid>
   </DockPanel>

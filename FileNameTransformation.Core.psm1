@@ -655,6 +655,19 @@ function Get-FNTFileMetadata {
         Title           = ''
         LastModified    = $null
         LastModifiedStr = ''
+        DateTaken       = ''
+        DateTakenStr    = ''
+        Dimensions      = ''
+        Camera          = ''
+        AudioArtist     = ''
+        AudioTitle      = ''
+        AudioAlbum      = ''
+        AudioYear       = ''
+        DocCreator      = ''
+        DocTitle        = ''
+        DocSubject      = ''
+        HashMD5         = ''
+        HashSHA256      = ''
     }
 
     if (Test-Path -LiteralPath $Path -PathType Leaf) {
@@ -664,9 +677,30 @@ function Get-FNTFileMetadata {
             $result.CreationDateStr = $fi.CreationTime.ToString('yyyyMMdd')
             $result.LastModified = $fi.LastWriteTime
             $result.LastModifiedStr = $fi.LastWriteTime.ToString('yyyyMMdd')
+
+            # Calculate content hashes
+            try {
+                $md5 = [System.Security.Cryptography.MD5]::Create()
+                $sha256 = [System.Security.Cryptography.SHA256]::Create()
+                $stream = [System.IO.File]::OpenRead($Path)
+                try {
+                    $md5Bytes = $md5.ComputeHash($stream)
+                    $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
+                    [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
+                    $shaBytes = $sha256.ComputeHash($stream)
+                    $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
+                }
+                finally {
+                    $stream.Dispose()
+                    $md5.Dispose()
+                    $sha256.Dispose()
+                }
+            }
+            catch {}
         }
         catch {}
 
+        # Shell COM Extended Properties (Author, Title, Audio tags)
         try {
             $shell = New-Object -ComObject Shell.Application
             $parent = Split-Path $Path -Parent
@@ -679,10 +713,77 @@ function Get-FNTFileMetadata {
                     $title  = $folder.GetDetailsOf($item, 21)
                     if ($author) { $result.Author = [string]$author.Trim() }
                     if ($title)  { $result.Title  = [string]$title.Trim() }
+
+                    # Audio extended tags
+                    $artist = $folder.GetDetailsOf($item, 13)
+                    $album  = $folder.GetDetailsOf($item, 14)
+                    $year   = $folder.GetDetailsOf($item, 15)
+                    if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
+                    if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
+                    if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
+                    if ($album)  { $result.AudioAlbum  = [string]$album.Trim() }
+                    if ($year)   { $result.AudioYear   = [string]$year.Trim() }
                 }
             }
         }
         catch {}
+
+        # Image EXIF & Dimension Metadata (.jpg, .jpeg, .png, .tiff)
+        $ext = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
+        if ($ext -in @('.jpg', '.jpeg', '.png', '.tif', '.tiff')) {
+            try {
+                Add-Type -AssemblyName PresentationCore -ErrorAction SilentlyContinue
+                $fs = [System.IO.File]::OpenRead($Path)
+                try {
+                    $decoder = [System.Windows.Media.Imaging.BitmapDecoder]::Create($fs, [System.Windows.Media.Imaging.BitmapCreateOptions]::None, [System.Windows.Media.Imaging.BitmapCacheOption]::None)
+                    if ($decoder.Frames.Count -gt 0) {
+                        $frame = $decoder.Frames[0]
+                        $result.Dimensions = "$($frame.PixelWidth)x$($frame.PixelHeight)"
+                        $metadata = $frame.Metadata -as [System.Windows.Media.Imaging.BitmapMetadata]
+                        if ($null -ne $metadata) {
+                            if ($metadata.DateTaken) {
+                                $dt = [datetime]::Parse($metadata.DateTaken)
+                                $result.DateTaken = $dt.ToString('yyyy-MM-dd HH:mm:ss')
+                                $result.DateTakenStr = $dt.ToString('yyyyMMdd')
+                            }
+                            if ($metadata.CameraModel) { $result.Camera = [string]$metadata.CameraModel }
+                        }
+                    }
+                }
+                finally {
+                    $fs.Dispose()
+                }
+            }
+            catch {}
+        }
+
+        # Office OpenXML Metadata (.docx, .xlsx, .pptx)
+        if ($ext -in @('.docx', '.xlsx', '.pptx')) {
+            try {
+                Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
+                $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
+                try {
+                    $coreEntry = $zip.Entries | Where-Object { $_.FullName -eq 'docProps/core.xml' }
+                    if ($coreEntry) {
+                        $stream = $coreEntry.Open()
+                        $reader = [System.IO.StreamReader]::new($stream)
+                        $xmlContent = $reader.ReadToEnd()
+                        $reader.Dispose()
+                        $stream.Dispose()
+                        [xml]$xml = $xmlContent
+                        if ($xml.coreProperties) {
+                            if ($xml.coreProperties.creator) { $result.DocCreator = [string]$xml.coreProperties.creator }
+                            if ($xml.coreProperties.title) { $result.DocTitle = [string]$xml.coreProperties.title }
+                            if ($xml.coreProperties.subject) { $result.DocSubject = [string]$xml.coreProperties.subject }
+                        }
+                    }
+                }
+                finally {
+                    $zip.Dispose()
+                }
+            }
+            catch {}
+        }
 
         if ($result.Author) {
             $authorClean = $result.Author -replace '[^\p{L}\s,-]', ''

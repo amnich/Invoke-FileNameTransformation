@@ -1,24 +1,70 @@
 # Mappings.ps1 — CSV mapping functions and the mapping dialog.
 # Dot-sourced by the main script; operates in $script: scope.
 
+function Get-FNTDictionaryHeaders([string]$path) {
+    if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+        return [pscustomobject]@{ Delimiter = ','; Headers = @(); Format = 'CSV' }
+    }
+    $ext = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
+
+    if ($ext -eq '.json') {
+        try {
+            $raw = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+            $json = $raw | ConvertFrom-Json
+            $headers = @()
+            if ($json -is [System.Array] -and $json.Count -gt 0) {
+                $headers = @($json[0].PSObject.Properties.Name)
+            }
+            elseif ($json -is [PSCustomObject] -or $json -is [hashtable]) {
+                $headers = @($json.PSObject.Properties.Name)
+            }
+            return [pscustomobject]@{ Delimiter = ''; Headers = $headers; Format = 'JSON' }
+        }
+        catch {
+            return [pscustomobject]@{ Delimiter = ''; Headers = @(); Format = 'JSON' }
+        }
+    }
+    elseif ($ext -eq '.xml') {
+        try {
+            [xml]$xml = Get-Content -LiteralPath $path -Raw -Encoding UTF8
+            $headers = New-Object System.Collections.Generic.List[string]
+            $root = $xml.DocumentElement
+            if ($root.HasChildNodes) {
+                $firstChild = $root.ChildNodes[0]
+                foreach ($node in $firstChild.ChildNodes) {
+                    if ($node.Name) { $headers.Add([string]$node.Name) }
+                }
+                foreach ($attr in $firstChild.Attributes) {
+                    if ($attr.Name) { $headers.Add("@" + $attr.Name) }
+                }
+            }
+            return [pscustomobject]@{ Delimiter = ''; Headers = @($headers | Select-Object -Unique); Format = 'XML' }
+        }
+        catch {
+            return [pscustomobject]@{ Delimiter = ''; Headers = @(); Format = 'XML' }
+        }
+    }
+    else {
+        # CSV auto-detection
+        $headerLine = Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1
+        if (-not $headerLine) {
+            return [pscustomobject]@{ Delimiter = ','; Headers = @(); Format = 'CSV' }
+        }
+        $delimiter = @(';', ',', "`t", '|') |
+        Sort-Object { ([regex]::Matches($headerLine, [regex]::Escape($_))).Count } -Descending |
+        Select-Object -First 1
+
+        $headers = @()
+        if ($headerLine) {
+            $headers = @($headerLine -split [regex]::Escape($delimiter))
+            $headers = @($headers | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+        }
+        return [pscustomobject]@{ Delimiter = $delimiter; Headers = $headers; Format = 'CSV' }
+    }
+}
+
 function CsvHeaders([string]$path) {
-    $headerLine = Get-Content -LiteralPath $path -Encoding UTF8 | Where-Object { $_ -and $_.Trim() } | Select-Object -First 1
-    if (-not $headerLine) {
-        return [pscustomobject]@{ Delimiter = ','; Headers = @() }
-    }
-
-    # Auto-detect delimiter by frequency
-    $delimiter = @(';', ',', "`t", '|') |
-    Sort-Object { ([regex]::Matches($headerLine, [regex]::Escape($_))).Count } -Descending |
-    Select-Object -First 1
-
-    $headers = @()
-    if ($headerLine) {
-        $headers = @($headerLine -split [regex]::Escape($delimiter))
-        $headers = @($headers | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
-    }
-
-    [pscustomobject]@{ Delimiter = $delimiter; Headers = $headers }
+    return Get-FNTDictionaryHeaders $path
 }
 
 function EnsureVirtualField([string]$name) {
