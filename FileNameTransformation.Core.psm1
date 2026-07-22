@@ -743,7 +743,12 @@ function Get-FNTNormalizedAuthorSegment {
     $isLastUpper = ($lastChar -cmatch '[\p{Lu}]')
     $isFirstUpper = ($firstChar -cmatch '[\p{Lu}]')
 
-    if ($isLastUpper -and ($cleanNoHyphens.Length -eq 2 -or $cleanNoHyphens.Substring(0, $cleanNoHyphens.Length - 1) -cmatch '[\p{Ll}]')) {
+    if ($cleanNoHyphens -cmatch '^(?<Surname>\p{Lu}\p{Ll}+)(?<Given>\p{Lu}\p{Ll}*)$') {
+        # Concatenated full name: "KowalskiJan" -> "KowalskJ"
+        $surname = $Matches.Surname
+        $initial = $Matches.Given.Substring(0, 1)
+    }
+    elseif ($isLastUpper -and ($cleanNoHyphens.Length -eq 2 -or $cleanNoHyphens.Substring(0, $cleanNoHyphens.Length - 1) -cmatch '[\p{Ll}]')) {
         # SurnameFirst: "Mnich" + "A"
         $surname = $cleanNoHyphens.Substring(0, $cleanNoHyphens.Length - 1)
         $initial = $lastChar
