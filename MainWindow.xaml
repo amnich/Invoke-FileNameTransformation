@@ -67,9 +67,21 @@
           </Grid.RowDefinitions>
           <Label Grid.Row="0" Content="{t:Source_Folder}"/>
           <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1"/>
+          <Popup x:Name="SourcePathSuggestions" PlacementTarget="{Binding ElementName=SourcePath}"
+                 Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+            <Border Width="520" MaxHeight="180" Background="White" BorderBrush="#AAB7C4" BorderThickness="1">
+              <ListBox x:Name="SourcePathSuggestionList" MaxHeight="178"/>
+            </Border>
+          </Popup>
           <Button x:Name="BrowseSource" Grid.Row="0" Grid.Column="2" Content="{t:Btn_Browse}"/>
           <Label Grid.Row="1" Content="{t:Dest_Folder}"/>
           <TextBox x:Name="DestinationPath" Grid.Row="1" Grid.Column="1"/>
+          <Popup x:Name="DestinationPathSuggestions" PlacementTarget="{Binding ElementName=DestinationPath}"
+                 Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
+            <Border Width="520" MaxHeight="180" Background="White" BorderBrush="#AAB7C4" BorderThickness="1">
+              <ListBox x:Name="DestinationPathSuggestionList" MaxHeight="178"/>
+            </Border>
+          </Popup>
           <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}"/>
           <CheckBox x:Name="Recursive" Grid.Row="2" Grid.Column="1"
                     Content="{t:Chk_Recursive}"
@@ -89,7 +101,6 @@
           <DockPanel Margin="8">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
               <Button x:Name="ComplianceScan" Content="{t:Btn_ScanCompliance}" Background="#D6E9FC"/>
-              <CheckBox x:Name="ComplianceRecursive" Content="{t:Chk_Recursive}" Margin="10,0" VerticalAlignment="Center"/>
               <TextBlock Text="{t:Txt_Extension}" Margin="14,8,4,0"/>
               <ComboBox x:Name="ComplianceExtFilter" Width="100" VerticalAlignment="Center"/>
               <TextBlock x:Name="ComplianceInfo" Margin="14,8,4,4" VerticalAlignment="Center"/>

@@ -1,4 +1,3 @@
-#requires -Version 5.1
 <#
 .SYNOPSIS
     Launches the File Name Transformer GUI for bulk renaming and copying.
@@ -28,20 +27,31 @@
     - Copy or move execution mode with audit logging.
     - Independent options for scanning subfolders and preserving their structure at the destination.
 
+    The saved language in config.json takes precedence over the operating system language. Each normal
+    script invocation starts the GUI in an isolated STA PowerShell host so it can be reopened safely
+    from the same interactive PowerShell session.
+
 .EXAMPLE
     .\Invoke-FileNameTransformation.ps1
     Launches the application GUI from the current folder.
 
 .EXAMPLE
     powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
-    Starts the script in a single-threaded apartment (required for WPF).
+    Starts the application from a command prompt, shortcut, or automation scenario. The script starts
+    its GUI in an isolated STA child host.
+
+.PARAMETER IsolatedHost
+    Internal switch used by the launcher for the isolated GUI process. Do not specify it during normal use.
 
 .NOTES
-    Requires Windows PowerShell 5.1, an STA host, and FileNameTransformation.Core.psm1 beside the script or executable.
-    Profiles, logs, and the language configuration are stored
-    under the current user's AppData folder, with fallback to the script directory or temporary folder when needed.
+    Requires Windows PowerShell 5.1 and FileNameTransformation.Core.psm1 beside the development script.
+    The development script reads config.json from its own directory. Profiles and logs are stored under
+    the current user's AppData folder, with fallback to the script directory or temporary folder when needed.
     When subfolder scanning is enabled, destination folder preservation is controlled separately and is enabled by default.
+    The Compliance tab is available only when the Windows USERDOMAIN environment variable contains BGH.
 #>
+
+#requires -Version 5.1
 
 [CmdletBinding()]
 param(

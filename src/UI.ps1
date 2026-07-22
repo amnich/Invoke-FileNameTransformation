@@ -86,6 +86,58 @@ function FolderDialog([string]$caption, [string]$initial) {
     if ($dlg.ShowDialog() -eq 'OK') { $dlg.SelectedPath }
 }
 
+function Get-DirectorySuggestions([string]$Path) {
+    try {
+        $typedPath = if ($Path) { $Path.Trim() } else { '' }
+        if ([string]::IsNullOrWhiteSpace($typedPath)) {
+            return @(Get-PSDrive -PSProvider FileSystem |
+                    Where-Object { $_.Root } |
+                    ForEach-Object { $_.Root } |
+                    Sort-Object -Unique)
+        }
+
+        if ($typedPath -match '^[A-Za-z]:$') {
+            $typedPath += '\'
+        }
+
+        $hasTrailingSeparator = $typedPath.EndsWith('\') -or $typedPath.EndsWith('/')
+        $parentPath = if ($hasTrailingSeparator) { $typedPath } else { Split-Path -Path $typedPath -Parent }
+        $leafPrefix = if ($hasTrailingSeparator) { '' } else { Split-Path -Path $typedPath -Leaf }
+
+        if ([string]::IsNullOrWhiteSpace($parentPath)) {
+            $parentPath = (Get-Location).Path
+        }
+        if (-not (Test-Path -LiteralPath $parentPath -PathType Container)) {
+            return @()
+        }
+
+        return @(Get-ChildItem -LiteralPath $parentPath -Directory -ErrorAction Stop |
+                Where-Object { $_.Name.StartsWith($leafPrefix, [StringComparison]::OrdinalIgnoreCase) } |
+                Sort-Object Name |
+                Select-Object -First 20 |
+                ForEach-Object { $_.FullName })
+    }
+    catch {
+        return @()
+    }
+}
+
+function Update-PathSuggestions($TextBox, $Popup, $SuggestionList) {
+    $suggestions = @(Get-DirectorySuggestions $TextBox.Text)
+    $SuggestionList.ItemsSource = $suggestions
+    $Popup.IsOpen = $TextBox.IsKeyboardFocusWithin -and $suggestions.Count -gt 0
+}
+
+function Apply-PathSuggestion($TextBox, $Popup, $SuggestionList) {
+    $selection = [string]$SuggestionList.SelectedItem
+    if (-not [string]::IsNullOrWhiteSpace($selection)) {
+        $TextBox.Text = $selection
+        $TextBox.CaretIndex = $TextBox.Text.Length
+    }
+    $Popup.IsOpen = $false
+    $TextBox.Focus() | Out-Null
+}
+
 function FileDialog {
     $dlg = New-Object Microsoft.Win32.OpenFileDialog
     $dlg.Filter = 'CSV (*.csv)|*.csv|Tekst (*.txt)|*.txt|Wszystkie (*.*)|*.*'

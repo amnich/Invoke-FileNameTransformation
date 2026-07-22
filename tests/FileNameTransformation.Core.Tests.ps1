@@ -469,16 +469,17 @@ Describe 'Test-FNTNamingConvention' {
 
 Describe 'Get-FNTNormalizedAuthorSegment' {
     It 'normalizes various author input strings to exactly 8 characters' -TestCases @(
-        @{ Input = 'MnichA-';      Expected = 'MnichA--' }
-        @{ Input = 'MajkJ';       Expected = 'MajkJ---' }
-        @{ Input = 'AMnich';      Expected = 'MnichA--' }
-        @{ Input = 'AMnich-';     Expected = 'MnichA--' }
-        @{ Input = 'JMajk---';    Expected = 'MajkJ---' }
-        @{ Input = 'MusteraM';    Expected = 'MusteraM' }
-        @{ Input = 'MustermannM'; Expected = 'MustermM' }
+        @{ Raw = 'MnichA-';      Expected = 'MnichA--' }
+        @{ Raw = 'MajkJ';       Expected = 'MajkJ---' }
+        @{ Raw = 'AMnich';      Expected = 'MnichA--' }
+        @{ Raw = 'AMnich-';     Expected = 'MnichA--' }
+        @{ Raw = 'JMajk---';    Expected = 'MajkJ---' }
+        @{ Raw = 'MusteraM';    Expected = 'MusteraM' }
+        @{ Raw = 'MustermannM'; Expected = 'MustermM' }
+        @{ Raw = 'KowalskiJan'; Expected = 'KowalskJ' }
     ) {
-        param($Input, $Expected)
-        Get-FNTNormalizedAuthorSegment $Input | Should -Be $Expected
+        param($Raw, $Expected)
+        Get-FNTNormalizedAuthorSegment $Raw | Should -Be $Expected
     }
 }
 

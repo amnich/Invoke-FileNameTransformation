@@ -43,7 +43,7 @@ function ScanCompliance {
         throw (T 'Err_SrcNotExist')
     }
 
-    $files = if ($ComplianceRecursive.IsChecked) {
+    $files = if ($Recursive.IsChecked) {
         @(Get-ChildItem -LiteralPath $src -File -Recurse)
     }
     else {
@@ -57,11 +57,11 @@ function ScanCompliance {
     $ComplianceExtFilter.ItemsSource = $extensions
     $selectedExt = [string]$ComplianceExtFilter.SelectedItem
 
-    $filteredFiles = if ($selectedExt) {
+    $filteredFiles = @(if ($selectedExt) {
         @($files | Where-Object { $_.Extension.ToLower() -eq $selectedExt })
     } else {
         $files
-    }
+    })
 
     $script:ComplianceRows.Clear()
     $okCount = 0
