@@ -44,7 +44,20 @@
 #>
 
 [CmdletBinding()]
-param()
+param(
+    [switch]$IsolatedHost
+)
+
+if (-not $IsolatedHost) {
+    $powershellPath = Join-Path $PSHOME 'powershell.exe'
+    if (-not (Test-Path -LiteralPath $powershellPath -PathType Leaf)) {
+        $powershellPath = 'powershell.exe'
+    }
+
+    & $powershellPath -NoProfile -STA -File $PSCommandPath -IsolatedHost
+    return
+}
+
 $ErrorActionPreference = 'Stop'
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
@@ -58,10 +71,10 @@ if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
 # folder for profiles/logs, so we keep the source location in $script:ScriptRoot.
 $script:ScriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
 $script:ConfigPath = Join-Path $script:ScriptRoot 'config.json'
-$script:CurrentLanguage = 'PL'
+$script:CurrentLanguage = $null
 $script:Config = [pscustomobject][ordered]@{
     Version         = 2
-    Language        = 'PL'
+    Language        = $null
     CustomTypeRules = @()
 }
 $coreModulePath = Join-Path $script:ScriptRoot 'FileNameTransformation.Core.psm1'
@@ -81,7 +94,7 @@ if (Test-Path $script:ConfigPath) {
         }
     }
     catch {
-        Write-Error 'Failed to load config file!'
+        Write-Warning "Failed to load config file '$script:ConfigPath': $($_.Exception.Message)"
     }
 }
 $customRuleValidation = Test-FNTCustomTypeRules @($script:Config.CustomTypeRules)
@@ -93,15 +106,60 @@ foreach ($ruleError in @($customRuleValidation.Errors)) {
 # Load translations
 . (Join-Path $script:ScriptRoot 'src\Translations.ps1')
 
-# Set application language based on OS or profile (fallback to EN)
-$osLang = (Get-Culture).TwoLetterISOLanguageName.ToUpper()
-$script:CurrentLanguage = if ($osLang -in @('PL', 'EN', 'DE')) { $osLang } else { 'EN' }
+# Use the OS language only if no valid setting was loaded from config.json.
+if ($script:CurrentLanguage -notin @('PL', 'EN', 'DE')) {
+    $osLang = (Get-Culture).TwoLetterISOLanguageName.ToUpper()
+    $script:CurrentLanguage = if ($osLang -in @('PL', 'EN', 'DE')) { $osLang } else { 'EN' }
+}
 
 function T([string]$Key) {
     if ($script:Translations[$script:CurrentLanguage].ContainsKey($Key)) {
         return $script:Translations[$script:CurrentLanguage][$Key]
     }
     return $Key
+}
+
+function Throw-StartupFailure([string]$Stage, [Exception]$Exception) {
+    $details = "Startup failed during $Stage. Language: $script:CurrentLanguage."
+    if ($Exception.InnerException) {
+        $details += " Inner exception: $($Exception.InnerException.GetType().FullName): $($Exception.InnerException.Message)"
+    }
+    throw [System.InvalidOperationException]::new("$details Exception: $($Exception.GetType().FullName): $($Exception.Message)", $Exception)
+}
+
+function Get-XamlLoadDiagnostic([string]$Xaml) {
+    $results = New-Object System.Collections.Generic.List[string]
+    try {
+        $testDocument = New-Object System.Xml.XmlDocument
+        $testDocument.LoadXml($Xaml)
+        $namespaceManager = New-Object System.Xml.XmlNamespaceManager $testDocument.NameTable
+        $namespaceManager.AddNamespace('p', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+        $tabItems = @($testDocument.SelectNodes('//p:TabItem', $namespaceManager))
+
+        for ($index = 0; $index -lt $tabItems.Count; $index++) {
+            $reducedDocument = New-Object System.Xml.XmlDocument
+            $reducedDocument.LoadXml($Xaml)
+            $reducedNamespaceManager = New-Object System.Xml.XmlNamespaceManager $reducedDocument.NameTable
+            $reducedNamespaceManager.AddNamespace('p', 'http://schemas.microsoft.com/winfx/2006/xaml/presentation')
+            $tabToRemove = @($reducedDocument.SelectNodes('//p:TabItem', $reducedNamespaceManager))[$index]
+            $header = $tabToRemove.GetAttribute('Header')
+            [void]$tabToRemove.ParentNode.RemoveChild($tabToRemove)
+
+            try {
+                $testReader = New-Object System.Xml.XmlNodeReader $reducedDocument
+                [Windows.Markup.XamlReader]::Load($testReader) | Out-Null
+                $results.Add("WPF load succeeds when TabItem #$($index + 1) ('$header') is removed.")
+            }
+            catch {
+                $results.Add("WPF load still fails when TabItem #$($index + 1) ('$header') is removed: $($_.Exception.InnerException.Message)")
+            }
+        }
+    }
+    catch {
+        $results.Add("Unable to run XAML structural probe: $($_.Exception.Message)")
+    }
+
+    return ($results -join ' ')
 }
 #endregion
 #region Application Directories and State
@@ -132,32 +190,75 @@ $script:ScreenHeight = [System.Windows.SystemParameters]::PrimaryScreenHeight * 
 #region XAML Definition
 # Read MainWindow.xaml from disk
 $xamlPath = Join-Path $script:ScriptRoot 'MainWindow.xaml'
-if (-not (Test-Path -LiteralPath $xamlPath -PathType Leaf)) {
-    throw "Missing UI template: $xamlPath"
+try {
+    if (-not (Test-Path -LiteralPath $xamlPath -PathType Leaf)) {
+        throw "Missing UI template: $xamlPath"
+    }
+    $xamlTemplate = [System.IO.File]::ReadAllText($xamlPath)
 }
-$xamlTemplate = [System.IO.File]::ReadAllText($xamlPath)
+catch {
+    Throw-StartupFailure "reading UI template '$xamlPath'" $_.Exception
+}
 #endregion
 
 #region Window Creation and Element Binding
-$xamlTemplate = $xamlTemplate.Replace('{ScreenWidth}', [string][int]$script:ScreenWidth)
-$xamlTemplate = $xamlTemplate.Replace('{ScreenHeight}', [string][int]$script:ScreenHeight)
-foreach ($key in $script:Translations[$script:CurrentLanguage].Keys) {
-    $xamlTemplate = $xamlTemplate.Replace("{t:$key}", $script:Translations[$script:CurrentLanguage][$key])
+try {
+    $xamlTemplate = $xamlTemplate.Replace('{ScreenWidth}', [string][int]$script:ScreenWidth)
+    $xamlTemplate = $xamlTemplate.Replace('{ScreenHeight}', [string][int]$script:ScreenHeight)
+    foreach ($key in $script:Translations[$script:CurrentLanguage].Keys) {
+        $translation = $script:Translations[$script:CurrentLanguage][$key]
+        if ($null -eq $translation) {
+            throw "Translation '$key' has no value."
+        }
+        $xamlTemplate = $xamlTemplate.Replace("{t:$key}", [string]$translation)
+    }
+    $script:IsBGHDomainUser = [string]$env:USERDOMAIN -ieq 'BGH'
+    if (-not $script:IsBGHDomainUser) {
+        $xamlTemplate = [regex]::Replace(
+            $xamlTemplate,
+            '(?s)\s*<!-- BGH_COMPLIANCE_START -->.*?<!-- BGH_COMPLIANCE_END -->',
+            ''
+        )
+    }
 }
-$unresolvedTranslationTokens = @([regex]::Matches($xamlTemplate, '\{t:[^}]+\}') | ForEach-Object Value | Sort-Object -Unique)
-if ($unresolvedTranslationTokens.Count -gt 0) {
-    throw "Missing translations for language '$script:CurrentLanguage': $($unresolvedTranslationTokens -join ', ')"
+catch {
+    Throw-StartupFailure 'applying translations to the UI template' $_.Exception
 }
-[xml]$xamlDoc = $xamlTemplate
-$reader = New-Object System.Xml.XmlNodeReader $xamlDoc
-$window = [Windows.Markup.XamlReader]::Load($reader)
 
-# Bind all named XAML elements to script-scoped variables
-$ns = New-Object System.Xml.XmlNamespaceManager $xamlDoc.NameTable
-$ns.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
-$xamlDoc.SelectNodes('//*[@x:Name]', $ns) | ForEach-Object {
-    $name = $_.GetAttribute('Name', 'http://schemas.microsoft.com/winfx/2006/xaml')
-    Set-Variable -Name $name -Value $window.FindName($name) -Scope Script
+try {
+    $unresolvedTranslationTokens = @([regex]::Matches($xamlTemplate, '\{t:[^}]+\}') | ForEach-Object Value | Sort-Object -Unique)
+    if ($unresolvedTranslationTokens.Count -gt 0) {
+        throw "Missing translations: $($unresolvedTranslationTokens -join ', ')"
+    }
+    [xml]$xamlDoc = $xamlTemplate
+}
+catch {
+    Throw-StartupFailure "validating translated UI template '$xamlPath'" $_.Exception
+}
+
+try {
+    $window = [Windows.Markup.XamlReader]::Parse($xamlTemplate)
+}
+catch {
+    $loadDiagnostic = Get-XamlLoadDiagnostic $xamlTemplate
+    $loadException = [System.InvalidOperationException]::new("$($_.Exception.Message) XAML structural probe: $loadDiagnostic", $_.Exception)
+    Throw-StartupFailure "creating WPF controls from '$xamlPath'" $loadException
+}
+
+try {
+    $ns = New-Object System.Xml.XmlNamespaceManager $xamlDoc.NameTable
+    $ns.AddNamespace('x', 'http://schemas.microsoft.com/winfx/2006/xaml')
+    $xamlDoc.SelectNodes('//*[@x:Name]', $ns) | ForEach-Object {
+        $name = $_.GetAttribute('Name', 'http://schemas.microsoft.com/winfx/2006/xaml')
+        $control = $window.FindName($name)
+        if ($null -eq $control) {
+            throw "XAML control '$name' was not created."
+        }
+        Set-Variable -Name $name -Value $control -Scope Script
+    }
+}
+catch {
+    Throw-StartupFailure 'binding named WPF controls' $_.Exception
 }
 #endregion
 
@@ -650,8 +751,5 @@ UpdateOutputExample
 $window.Add_Closed({ Log (T 'Log_AppClosed') })
 SetStatus (T 'Status_Ready')
 
-$application = New-Object System.Windows.Application
-$application.MainWindow = $window
-$window.Show()
-[void]$application.Run()
+[void]$window.ShowDialog()
 #endregion

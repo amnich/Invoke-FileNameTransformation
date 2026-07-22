@@ -83,6 +83,7 @@
       <!-- Tabs -->
       <TabControl Grid.Row="1" Margin="4">
 
+        <!-- BGH_COMPLIANCE_START -->
         <!-- ========== 0. Compliance ========== -->
         <TabItem Header="{t:Tab_Compliance}">
           <DockPanel Margin="8">
@@ -123,6 +124,7 @@
             </DataGrid>
           </DockPanel>
         </TabItem>
+        <!-- BGH_COMPLIANCE_END -->
 
         <!-- ========== 1. Profile ========== -->
         <TabItem Header="{t:Tab_Profile}">
