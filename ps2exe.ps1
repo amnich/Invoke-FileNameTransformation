@@ -46,6 +46,12 @@ try {
         }
 
         # Runtime dependencies are embedded into the temporary script before ps2exe compiles it.
+        $isolatedHostPattern = '(?ms)^\[CmdletBinding\(\)\]\nparam\(\s*\[switch\]\$IsolatedHost\s*\)\n\nif \(-not \$IsolatedHost\) \{.*?^\}\n\n(?=\$ErrorActionPreference)'
+        if ($sourceContent -notmatch $isolatedHostPattern) {
+                throw 'Could not find the isolated-host launcher in the application script.'
+        }
+        $sourceContent = [regex]::Replace($sourceContent, $isolatedHostPattern, "[CmdletBinding()]`nparam()`n`n", 1)
+
         $embeddedCore = $coreContent -replace '(?m)^Set-StrictMode -Version 2\.0\n?', ''
         $embeddedCore = $embeddedCore -replace '(?m)^Export-ModuleMember .*\n?', ''
         $bootstrapPattern = '(?ms)^\$coreModulePath = Join-Path \$script:ScriptRoot ''FileNameTransformation\.Core\.psm1''\nif \(-not \(Test-Path -LiteralPath \$coreModulePath -PathType Leaf\)\) \{\n    throw "Missing core module: \$coreModulePath"\n\}\nImport-Module \$coreModulePath -Force -DisableNameChecking\n?'
@@ -58,7 +64,7 @@ try {
         $mergedContent = [regex]::Replace($sourceContent, $bootstrapPattern, $replacement, 1)
 
         $xamlPayload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($xamlContent))
-        $xamlPattern = '(?ms)# Read MainWindow\.xaml from disk\n\$xamlPath = Join-Path \$script:ScriptRoot ''MainWindow\.xaml''\nif \(-not \(Test-Path -LiteralPath \$xamlPath -PathType Leaf\)\) \{\n    throw "Missing UI template: \$xamlPath"\n\}\n\$xamlTemplate = \[System\.IO\.File\]::ReadAllText\(\$xamlPath\)'
+        $xamlPattern = '(?ms)# Read MainWindow\.xaml from disk\n\$xamlPath = Join-Path \$script:ScriptRoot ''MainWindow\.xaml''\ntry \{\n    if \(-not \(Test-Path -LiteralPath \$xamlPath -PathType Leaf\)\) \{\n        throw "Missing UI template: \$xamlPath"\n    \}\n    \$xamlTemplate = \[System\.IO\.File\]::ReadAllText\(\$xamlPath\)\n\}\ncatch \{\n    Throw-StartupFailure "reading UI template ''\$xamlPath''" \$_\.Exception\n\}'
         $embeddedXaml = "# MainWindow.xaml is embedded in the packaged executable.`n`$xamlTemplate = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$xamlPayload'))"
         if ($mergedContent -notmatch $xamlPattern) {
                 throw 'Could not find the MainWindow.xaml load block in the application script.'

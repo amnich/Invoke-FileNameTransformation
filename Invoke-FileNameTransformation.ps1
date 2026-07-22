@@ -212,7 +212,7 @@ try {
         }
         $xamlTemplate = $xamlTemplate.Replace("{t:$key}", [string]$translation)
     }
-    $script:IsBGHDomainUser = [string]$env:USERDOMAIN -ieq 'BGH'
+    $script:IsBGHDomainUser = [string]$env:USERDOMAIN -match 'BGH'
     if (-not $script:IsBGHDomainUser) {
         $xamlTemplate = [regex]::Replace(
             $xamlTemplate,
