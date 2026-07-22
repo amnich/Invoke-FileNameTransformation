@@ -11,6 +11,14 @@ $BrowseDestination.Add_Click({
         if ($p) { $DestinationPath.Text = $p }
     })
 
+# --- Folder path suggestions ---
+$SourcePath.Add_TextChanged({ Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
+$DestinationPath.Add_TextChanged({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
+$SourcePath.Add_GotKeyboardFocus({ Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
+$DestinationPath.Add_GotKeyboardFocus({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
+$SourcePathSuggestionList.Add_SelectionChanged({ Apply-PathSuggestion $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
+$DestinationPathSuggestionList.Add_SelectionChanged({ Apply-PathSuggestion $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
+
 # --- Tab 0: Compliance ---
 if ($ComplianceScan -and $ComplianceFixSelected -and $ComplianceExtFilter) {
     $ComplianceScan.Add_Click({

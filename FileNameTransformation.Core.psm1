@@ -686,7 +686,7 @@ function Get-FNTFileMetadata {
 
         if ($result.Author) {
             $authorClean = $result.Author -replace '[^\p{L}\s,-]', ''
-            $parts = @($authorClean -split '\s+|,') | Where-Object { $_.Trim() }
+            $parts = @(@($authorClean -split '\s+|,') | Where-Object { $_.Trim() })
             if ($parts.Count -ge 2) {
                 if ($result.Author -match ',') {
                     $surname = $parts[0].Trim()

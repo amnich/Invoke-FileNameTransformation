@@ -57,11 +57,11 @@ function ScanCompliance {
     $ComplianceExtFilter.ItemsSource = $extensions
     $selectedExt = [string]$ComplianceExtFilter.SelectedItem
 
-    $filteredFiles = if ($selectedExt) {
+    $filteredFiles = @(if ($selectedExt) {
         @($files | Where-Object { $_.Extension.ToLower() -eq $selectedExt })
     } else {
         $files
-    }
+    })
 
     $script:ComplianceRows.Clear()
     $okCount = 0
