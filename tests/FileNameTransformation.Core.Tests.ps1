@@ -402,6 +402,15 @@ Describe 'Profile compatibility' {
 }
 
 Describe 'Test-FNTNamingConvention' {
+    It 'classifies an empty basename as noncompliant' {
+        $res = Test-FNTNamingConvention -BaseName ''
+
+        $res.IsCompliant | Should -BeFalse
+        $res.Segments.FreeText | Should -Be ''
+        $res.Violations | Should -Contain 'Compliance_StructureBad'
+        $res.Violations | Should -Contain 'Compliance_DateBad'
+    }
+
     It 'validates compliant filename' {
         $res = Test-FNTNamingConvention -BaseName '20260721_MusteraM_Protokoll_Neubau-LBO_v1'
         $res.IsCompliant | Should -Be $true

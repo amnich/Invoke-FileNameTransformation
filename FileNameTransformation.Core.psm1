@@ -876,7 +876,7 @@ function Get-FNTNormalizedAuthorSegment {
 function Test-FNTNamingConvention {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$BaseName
+        [Parameter(Mandatory)][AllowEmptyString()][string]$BaseName
     )
 
     $violations = New-Object System.Collections.Generic.List[string]
