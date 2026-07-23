@@ -556,3 +556,100 @@ Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
         }
     }
 }
+
+Describe 'Phase 3: Performance Caching, Collision Resolution & Undo Manifests' {
+    It 'skips hash calculations when requested fields do not include hashes' {
+        $testFile = [System.IO.Path]::GetTempFileName()
+        try {
+            Set-Content -LiteralPath $testFile -Value "Sample Content" -Encoding UTF8
+            $meta = Get-FNTFileMetadata -Path $testFile -RequestedFields @('CreationDate') -BypassCache
+            $meta.HashMD5 | Should -Be ''
+            $meta.HashSHA256 | Should -Be ''
+        }
+        finally {
+            Remove-Item $testFile -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'uses cached metadata on consecutive queries' {
+        $testFile = [System.IO.Path]::GetTempFileName()
+        try {
+            Clear-FNTMetadataCache
+            Set-Content -LiteralPath $testFile -Value "Cached Content" -Encoding UTF8
+            $meta1 = Get-FNTFileMetadata -Path $testFile
+            $meta2 = Get-FNTFileMetadata -Path $testFile
+            [object]::ReferenceEquals($meta1, $meta2) | Should -BeTrue
+        }
+        finally {
+            Remove-Item $testFile -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'resolves collisions with AutoNumber policy' {
+        $tempDir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        $existingFile = Join-Path $tempDir 'report.txt'
+        Set-Content -LiteralPath $existingFile -Value 'data' -Encoding UTF8
+        $claimed = @{}
+
+        try {
+            $res1 = Resolve-FNTDestinationCollision -DestinationPath $existingFile -CollisionPolicy 'AutoNumber' -ClaimedPaths $claimed
+            $res1.Action | Should -Be 'AutoNumber'
+            $res1.Path | Should -EndWith 'report_1.txt'
+
+            $res2 = Resolve-FNTDestinationCollision -DestinationPath $existingFile -CollisionPolicy 'AutoNumber' -ClaimedPaths $claimed
+            $res2.Action | Should -Be 'AutoNumber'
+            $res2.Path | Should -EndWith 'report_2.txt'
+        }
+        finally {
+            Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'exports undo manifest and successfully reverts moves' {
+        $tempDir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        $srcFile = Join-Path $tempDir 'source.txt'
+        $dstFile = Join-Path $tempDir 'renamed.txt'
+        Set-Content -LiteralPath $srcFile -Value 'test data' -Encoding UTF8
+
+        try {
+            Move-Item -LiteralPath $srcFile -Destination $dstFile -Force
+            Test-Path $srcFile | Should -BeFalse
+            Test-Path $dstFile | Should -BeTrue
+
+            $ops = @([pscustomobject]@{
+                Mode            = 'Move'
+                SourcePath      = $srcFile
+                DestinationPath = $dstFile
+            })
+
+            $manifestPath = Export-FNTUndoManifest -Operations $ops -LogDirectory $tempDir
+            Test-Path $manifestPath | Should -BeTrue
+
+            $undoRes = Invoke-FNTUndoOperation -ManifestPath $manifestPath
+            $undoRes.RevertedCount | Should -Be 1
+            Test-Path $srcFile | Should -BeTrue
+            Test-Path $dstFile | Should -BeFalse
+        }
+        finally {
+            Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'safely enumerates files with Get-FNTSafeChildItem' {
+        $tempDir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), [System.Guid]::NewGuid().ToString())
+        New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
+        $testFile = Join-Path $tempDir 'safe_test.txt'
+        Set-Content -LiteralPath $testFile -Value 'content' -Encoding UTF8
+
+        try {
+            $files = Get-FNTSafeChildItem -Path $tempDir -File
+            $files.Count | Should -Be 1
+            $files[0].Name | Should -Be 'safe_test.txt'
+        }
+        finally {
+            Remove-Item -LiteralPath $tempDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}

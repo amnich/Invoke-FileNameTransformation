@@ -47,30 +47,42 @@
 
 [CmdletBinding()]
 param(
-    [switch]$IsolatedHost
+    [switch]$IsolatedHost,
+    [string]$ProfilePath,
+    [Alias('SourcePath')][string]$SourceDir,
+    [Alias('DestinationPath')][string]$DestDir,
+    [Alias('ExecutionMode')][string]$Mode = 'Copy',
+    [Alias('CollisionPolicy')][string]$Collision = 'Block',
+    [switch]$NonInteractive
 )
 
-if (-not $IsolatedHost) {
+if ($Mode -and $Mode -notin @('Copy', 'Move')) {
+    throw "Invalid ExecutionMode '$Mode'. Expected 'Copy' or 'Move'."
+}
+if ($Collision -and $Collision -notin @('Block', 'AutoNumber', 'Overwrite', 'Skip')) {
+    throw "Invalid CollisionPolicy '$Collision'. Expected 'Block', 'AutoNumber', 'Overwrite', or 'Skip'."
+}
+
+if (-not $IsolatedHost -and -not $NonInteractive) {
     $powershellPath = Join-Path $PSHOME 'powershell.exe'
     if (-not (Test-Path -LiteralPath $powershellPath -PathType Leaf)) {
         $powershellPath = 'powershell.exe'
     }
 
-    & $powershellPath -NoProfile -STA -File $PSCommandPath -IsolatedHost
+    $argsList = @('-NoProfile', '-STA', '-File', $PSCommandPath, '-IsolatedHost')
+    if ($ProfilePath) { $argsList += @('-ProfilePath', $ProfilePath) }
+    if ($SourceDir) { $argsList += @('-SourcePath', $SourceDir) }
+    if ($DestDir) { $argsList += @('-DestinationPath', $DestDir) }
+    if ($Mode) { $argsList += @('-ExecutionMode', $Mode) }
+    if ($Collision) { $argsList += @('-CollisionPolicy', $Collision) }
+
+    & $powershellPath $argsList
     return
 }
 
 $ErrorActionPreference = 'Stop'
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
-Add-Type -AssemblyName Microsoft.VisualBasic
-
-if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
-    Write-Warning 'Run in STA mode!'
-}
 # Always resolve the script's own directory fresh on every run.
-# $script:AppRoot is intentionally overwritten later (line ~889) to the AppData
-# folder for profiles/logs, so we keep the source location in $script:ScriptRoot.
 $script:ScriptRoot = if ([string]::IsNullOrWhiteSpace($PSScriptRoot)) { (Get-Location).Path } else { $PSScriptRoot }
 $script:ConfigPath = Join-Path $script:ScriptRoot 'config.json'
 $script:CurrentLanguage = $null
@@ -87,28 +99,120 @@ if (-not (Test-Path -LiteralPath $coreModulePath -PathType Leaf)) {
 }
 Import-Module $coreModulePath -Force -DisableNameChecking
 
-if (Test-Path $script:ConfigPath) {
-    try {
-        Write-Verbose $script:ConfigPath
-        $config = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
-        $script:Config = ConvertTo-FNTConfig $config
-        if ($script:Config.Language -in @('PL', 'EN', 'DE')) {
-            $script:CurrentLanguage = $script:Config.Language
-            Write-Information "Using saved language: $script:CurrentLanguage"
+if ($NonInteractive) {
+    Write-Host "[FNT-CLI] Starting non-interactive batch execution..."
+    if ([string]::IsNullOrWhiteSpace($ProfilePath) -or -not (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) {
+        throw "[FNT-CLI] Invalid or missing -ProfilePath '$ProfilePath'."
+    }
+    if ([string]::IsNullOrWhiteSpace($SourceDir) -or -not (Test-Path -LiteralPath $SourceDir -PathType Container)) {
+        throw "[FNT-CLI] Invalid or missing -SourcePath '$SourceDir'."
+    }
+    if ([string]::IsNullOrWhiteSpace($DestDir) -or -not (Test-Path -LiteralPath $DestDir -PathType Container)) {
+        throw "[FNT-CLI] Invalid or missing -DestinationPath '$DestDir'."
+    }
+
+    $baseAppRoot = if ($env:APPDATA) { Join-Path $env:APPDATA 'FileNameTransformer' } else { [System.IO.Path]::GetTempPath() }
+    $script:AppRoot = $baseAppRoot
+    $script:ProfileRoot = Join-Path $script:AppRoot 'Profiles'
+    $script:LogRoot = Join-Path $script:AppRoot 'Logs'
+    New-Item -ItemType Directory -Path $script:ProfileRoot, $script:LogRoot -Force | Out-Null
+    $script:LogPath = Join-Path $script:LogRoot ('FileNameTransformer_CLI_{0:yyyyMMdd_HHmmss}.log' -f (Get-Date))
+
+    $script:Patterns = @()
+    $script:Fields = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+    $script:Mappings = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+    $script:OutputParts = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+    $script:PreviewRows = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+
+    . (Join-Path $script:ScriptRoot 'src\Translations.ps1')
+    . (Join-Path $script:ScriptRoot 'src\Analysis.ps1')
+    . (Join-Path $script:ScriptRoot 'src\Transforms.ps1')
+    . (Join-Path $script:ScriptRoot 'src\Mappings.ps1')
+    . (Join-Path $script:ScriptRoot 'src\Preview.ps1')
+    . (Join-Path $script:ScriptRoot 'src\Profiles.ps1')
+
+    LoadProfile $ProfilePath
+
+    $SourcePathControl = [pscustomobject]@{ Text = $SourceDir }
+    $DestinationPathControl = [pscustomobject]@{ Text = $DestDir }
+    $SourcePath = $SourcePathControl
+    $DestinationPath = $DestinationPathControl
+
+    $ExtensionFilter = [pscustomobject]@{ SelectedItem = [pscustomobject]@{ Content = 'All' } }
+    $PatternGrid = [pscustomobject]@{ SelectedItem = $null }
+
+    AnalyzePatterns
+
+    if ($script:Patterns.Count -eq 0) {
+        Write-Host "[FNT-CLI] No file matching patterns found in source folder."
+        exit 0
+    }
+
+    SetPattern $script:Patterns[0]
+
+    $EnforcePattern = [pscustomobject]@{ IsChecked = $false }
+    $KeepExtension = [pscustomobject]@{ IsChecked = $true }
+    $NewExtension = [pscustomobject]@{ Text = '' }
+    $PreserveFolderStructure = [pscustomobject]@{ IsChecked = $true }
+    $CollisionPolicySelector = [pscustomobject]@{ SelectedItem = [pscustomobject]@{ Tag = $Collision } }
+    $PreviewFilter = [pscustomobject]@{ SelectedItem = [pscustomobject]@{ Content = 'All' } }
+    $PreviewGrid = [pscustomobject]@{ ItemsSource = $null }
+    $PreviewInfo = [pscustomobject]@{ Text = '' }
+
+    FullBuildPreview
+
+    $errors = @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Error' })
+    if ($errors.Count -gt 0) {
+        Write-Error "[FNT-CLI] Preview built with $($errors.Count) errors."
+        exit 1
+    }
+
+    $readyRows = @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' })
+    Write-Host "[FNT-CLI] Processing $($readyRows.Count) files (Mode: $Mode, Policy: $Collision)..."
+
+    $ok = 0; $fail = 0
+    $completedOps = New-Object System.Collections.Generic.List[object]
+    foreach ($r in $readyRows) {
+        try {
+            $dir = Split-Path $r.DestinationPath -Parent
+            if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            }
+            if ($Mode -eq 'Move') {
+                Move-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
+                Write-Host "[FNT-CLI] Moved: $($r.SourcePath) -> $($r.DestinationPath)"
+            }
+            else {
+                Copy-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
+                Write-Host "[FNT-CLI] Copied: $($r.SourcePath) -> $($r.DestinationPath)"
+            }
+            $completedOps.Add([pscustomobject]@{
+                    Mode            = $Mode
+                    SourcePath      = $r.SourcePath
+                    DestinationPath = $r.DestinationPath
+                })
+            $ok++
         }
-        if ($script:Config.Theme -in @('Light', 'Dark')) {
-            $script:CurrentTheme = $script:Config.Theme
-            Write-Information "Using saved theme: $script:CurrentTheme"
+        catch {
+            $fail++
+            Write-Error "[FNT-CLI] Error processing $($r.SourcePath): $($_.Exception.Message)"
         }
     }
-    catch {
-        Write-Warning "Failed to load config file '$script:ConfigPath': $($_.Exception.Message)"
+
+    if ($completedOps.Count -gt 0) {
+        $manifestPath = Export-FNTUndoManifest -Operations $completedOps.ToArray() -LogDirectory $script:LogRoot
+        Write-Host "[FNT-CLI] Undo manifest written to: $manifestPath"
     }
+
+    Write-Host "[FNT-CLI] Batch execution completed successfully. Processed: $ok, Failed: $fail"
+    if ($fail -gt 0) { exit 1 } else { exit 0 }
 }
-$customRuleValidation = Test-FNTCustomTypeRules @($script:Config.CustomTypeRules)
-$script:CustomTypeRules = @($customRuleValidation.ValidRules)
-foreach ($ruleError in @($customRuleValidation.Errors)) {
-    Write-Warning "Custom type rule skipped: $($ruleError.Message)"
+
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
+Add-Type -AssemblyName Microsoft.VisualBasic
+
+if ([Threading.Thread]::CurrentThread.ApartmentState -ne 'STA') {
+    Write-Warning 'Run in STA mode!'
 }
 
 # Load translations
@@ -425,6 +529,25 @@ if ($ThemeSelector) {
 $LogText.Text = "Log: $script:LogPath"
 $FieldRole.SelectedIndex = 0
 RefreshProfiles
+
+if ($SourceDir -and $SourcePath -is [System.Windows.Controls.TextBox]) {
+    $SourcePath.Text = $SourceDir
+}
+if ($DestDir -and $DestinationPath -is [System.Windows.Controls.TextBox]) {
+    $DestinationPath.Text = $DestDir
+}
+if ($Mode -and $ExecutionMode -is [System.Windows.Controls.ComboBox]) {
+    $modeIndex = if ($Mode -eq 'Move') { 1 } else { 0 }
+    $ExecutionMode.SelectedIndex = $modeIndex
+}
+if ($Collision -and $CollisionPolicySelector -is [System.Windows.Controls.ComboBox]) {
+    $policyItem = @($CollisionPolicySelector.Items | Where-Object { $_.Tag -eq $Collision })[0]
+    if ($policyItem) { $CollisionPolicySelector.SelectedItem = $policyItem }
+}
+if ($ProfilePath -and (Test-Path -LiteralPath $ProfilePath -PathType Leaf)) {
+    try { LoadProfile $ProfilePath } catch {}
+}
+
 UpdateOutputExample
 
 $window.Add_Closed({ Log (T 'Log_AppClosed') })

@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Message",
   "Line": "Line",
   "Log": "Log",
@@ -404,5 +404,14 @@
   "ToolTip_CustomRuleApply": "Apply changes to selected custom rule",
   "ToolTip_CustomRuleTestInput": "Sample text string to test against custom rule pattern",
   "ToolTip_CustomRuleTestBtn": "Run regex pattern match against sample input text",
+  "Policy_Block": "Block execution on collision",
+  "Policy_AutoNumber": "Auto-number collision (_1, _2)",
+  "Policy_Overwrite": "Overwrite existing destination",
+  "Policy_Skip": "Skip conflicting files",
+  "Btn_UndoLast": "Undo Last Operation",
+  "ToolTip_CollisionPolicy": "Select collision handling strategy when destination file already exists or duplicates occur",
+  "ToolTip_UndoLast": "Revert the previous move or copy operation recorded in the undo manifest",
+  "Status_UndoDone": "Undo completed. Reverted:",
+  "Status_UndoErr": "Undo completed with errors.",
   "WinTitle": "File Name Transformer"
 }

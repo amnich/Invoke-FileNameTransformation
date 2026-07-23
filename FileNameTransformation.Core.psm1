@@ -13,6 +13,24 @@ $script:DateFormats = @(
     'yyyy-MM-ddTHH:mm:ss', 'yyyy-MM-ddTHH:mm:ssZ', 'yyyy-MM-ddTHH:mm:sszzz'
 )
 
+if (-not (Test-Path Variable:script:MetadataCache)) {
+    $script:MetadataCache = @{}
+}
+if (-not (Test-Path Variable:script:CompiledRegexCache)) {
+    $script:CompiledRegexCache = @{}
+}
+if (-not (Test-Path Variable:script:ShellApplication)) {
+    $script:ShellApplication = $null
+}
+
+function Clear-FNTMetadataCache {
+    [CmdletBinding()]
+    param()
+    if ($script:MetadataCache) {
+        $script:MetadataCache.Clear()
+    }
+}
+
 <#
 .SYNOPSIS
     Creates a structured Exception object with FNT error codes and diagnostic details.
@@ -211,14 +229,17 @@ function Get-FNTLexicalTokens {
         [Parameter(Mandatory)][string]$Pattern
     )
 
-    try {
-        $regex = [regex]::new($Pattern)
+    if (-not $script:CompiledRegexCache.ContainsKey($Pattern)) {
+        try {
+            $script:CompiledRegexCache[$Pattern] = [regex]::new($Pattern, [System.Text.RegularExpressions.RegexOptions]::Compiled)
+        }
+        catch {
+            throw (New-FNTException -Code 'Tokenizer.InvalidRegex' -Message "Invalid tokenizer regex: $($_.Exception.Message)" -Details @{
+                    Reason = $_.Exception.Message
+                })
+        }
     }
-    catch {
-        throw (New-FNTException -Code 'Tokenizer.InvalidRegex' -Message "Invalid tokenizer regex: $($_.Exception.Message)" -Details @{
-                Reason = $_.Exception.Message
-            })
-    }
+    $regex = $script:CompiledRegexCache[$Pattern]
 
     if ($regex.GetGroupNames() -notcontains 'sep') {
         throw (New-FNTException -Code 'Tokenizer.MissingSeparatorGroup' -Message "Tokenizer regex must define the named group 'sep'.")
@@ -982,8 +1003,22 @@ function ConvertTo-FNTProfile {
 function Get-FNTFileMetadata {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$Path
+        [Parameter(Mandatory)][string]$Path,
+        [string[]]$RequestedFields = $null,
+        [switch]$BypassCache
     )
+
+    $itemInfo = $null
+    if (Test-Path -LiteralPath $Path -PathType Leaf) {
+        try {
+            $itemInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
+            $cacheKey = "$Path|$($itemInfo.LastWriteTime.Ticks)|$($itemInfo.Length)"
+            if (-not $BypassCache -and $script:MetadataCache.ContainsKey($cacheKey)) {
+                return $script:MetadataCache[$cacheKey]
+            }
+        }
+        catch {}
+    }
 
     $result = [ordered]@{
         CreationDate    = $null
@@ -1012,65 +1047,80 @@ function Get-FNTFileMetadata {
 
     if (Test-Path -LiteralPath $Path -PathType Leaf) {
         try {
-            $fi = Get-Item -LiteralPath $Path -ErrorAction Stop
+            $fi = if ($itemInfo) { $itemInfo } else { Get-Item -LiteralPath $Path -ErrorAction Stop }
             $result.CreationDate = $fi.CreationTime
             $result.CreationDateStr = $fi.CreationTime.ToString('yyyyMMdd')
             $result.LastModified = $fi.LastWriteTime
             $result.LastModifiedStr = $fi.LastWriteTime.ToString('yyyyMMdd')
 
-            # Calculate content hashes
-            try {
-                $md5 = [System.Security.Cryptography.MD5]::Create()
-                $sha256 = [System.Security.Cryptography.SHA256]::Create()
-                $stream = [System.IO.File]::OpenRead($Path)
+            # Calculate content hashes only if requested or if no requested list specified
+            $needHashMD5 = ($null -eq $RequestedFields) -or ($RequestedFields -contains 'HashMD5') -or ($RequestedFields -contains 'Hash_MD5')
+            $needHashSHA256 = ($null -eq $RequestedFields) -or ($RequestedFields -contains 'HashSHA256') -or ($RequestedFields -contains 'Hash_SHA256')
+
+            if ($needHashMD5 -or $needHashSHA256) {
                 try {
-                    $md5Bytes = $md5.ComputeHash($stream)
-                    $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
-                    [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
-                    $shaBytes = $sha256.ComputeHash($stream)
-                    $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
+                    $md5 = if ($needHashMD5) { [System.Security.Cryptography.MD5]::Create() } else { $null }
+                    $sha256 = if ($needHashSHA256) { [System.Security.Cryptography.SHA256]::Create() } else { $null }
+                    $stream = [System.IO.File]::OpenRead($Path)
+                    try {
+                        if ($md5) {
+                            $md5Bytes = $md5.ComputeHash($stream)
+                            $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
+                        }
+                        if ($sha256) {
+                            [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
+                            $shaBytes = $sha256.ComputeHash($stream)
+                            $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
+                        }
+                    }
+                    finally {
+                        $stream.Dispose()
+                        if ($md5) { $md5.Dispose() }
+                        if ($sha256) { $sha256.Dispose() }
+                    }
                 }
-                finally {
-                    $stream.Dispose()
-                    $md5.Dispose()
-                    $sha256.Dispose()
-                }
+                catch {}
             }
-            catch {}
         }
         catch {}
 
         # Shell COM Extended Properties (Author, Title, Audio tags)
-        try {
-            $shell = New-Object -ComObject Shell.Application
-            $parent = Split-Path $Path -Parent
-            $leaf   = Split-Path $Path -Leaf
-            $folder = $shell.NameSpace($parent)
-            if ($folder) {
-                $item = $folder.ParseName($leaf)
-                if ($item) {
-                    $author = $folder.GetDetailsOf($item, 20)
-                    $title  = $folder.GetDetailsOf($item, 21)
-                    if ($author) { $result.Author = [string]$author.Trim() }
-                    if ($title)  { $result.Title  = [string]$title.Trim() }
+        $needShell = ($null -eq $RequestedFields) -or ($RequestedFields -match 'Author|Title|Audio|MetaAuthor|MetaTitle|MetaAudio')
+        if ($needShell) {
+            try {
+                if ($null -eq $script:ShellApplication) {
+                    $script:ShellApplication = New-Object -ComObject Shell.Application
+                }
+                $parent = Split-Path $Path -Parent
+                $leaf   = Split-Path $Path -Leaf
+                $folder = $script:ShellApplication.NameSpace($parent)
+                if ($folder) {
+                    $item = $folder.ParseName($leaf)
+                    if ($item) {
+                        $author = $folder.GetDetailsOf($item, 20)
+                        $title  = $folder.GetDetailsOf($item, 21)
+                        if ($author) { $result.Author = [string]$author.Trim() }
+                        if ($title)  { $result.Title  = [string]$title.Trim() }
 
-                    # Audio extended tags
-                    $artist = $folder.GetDetailsOf($item, 13)
-                    $album  = $folder.GetDetailsOf($item, 14)
-                    $year   = $folder.GetDetailsOf($item, 15)
-                    if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
-                    if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
-                    if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
-                    if ($album)  { $result.AudioAlbum  = [string]$album.Trim() }
-                    if ($year)   { $result.AudioYear   = [string]$year.Trim() }
+                        # Audio extended tags
+                        $artist = $folder.GetDetailsOf($item, 13)
+                        $album  = $folder.GetDetailsOf($item, 14)
+                        $year   = $folder.GetDetailsOf($item, 15)
+                        if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
+                        if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
+                        if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
+                        if ($album)  { $result.AudioAlbum  = [string]$album.Trim() }
+                        if ($year)   { $result.AudioYear   = [string]$year.Trim() }
+                    }
                 }
             }
+            catch {}
         }
-        catch {}
 
         # Image EXIF & Dimension Metadata (.jpg, .jpeg, .png, .tiff)
         $ext = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
-        if ($ext -in @('.jpg', '.jpeg', '.png', '.tif', '.tiff')) {
+        $needExif = ($null -eq $RequestedFields) -or ($RequestedFields -match 'DateTaken|Dimensions|Camera|MetaDateTaken|MetaDimensions|MetaCamera')
+        if ($needExif -and ($ext -in @('.jpg', '.jpeg', '.png', '.tif', '.tiff'))) {
             try {
                 Add-Type -AssemblyName PresentationCore -ErrorAction SilentlyContinue
                 $fs = [System.IO.File]::OpenRead($Path)
@@ -1098,7 +1148,8 @@ function Get-FNTFileMetadata {
         }
 
         # Office OpenXML Metadata (.docx, .xlsx, .pptx)
-        if ($ext -in @('.docx', '.xlsx', '.pptx')) {
+        $needOpenXml = ($null -eq $RequestedFields) -or ($RequestedFields -match 'DocCreator|DocTitle|DocSubject|MetaDocCreator')
+        if ($needOpenXml -and ($ext -in @('.docx', '.xlsx', '.pptx'))) {
             try {
                 Add-Type -AssemblyName System.IO.Compression.FileSystem -ErrorAction SilentlyContinue
                 $zip = [System.IO.Compression.ZipFile]::OpenRead($Path)
@@ -1139,11 +1190,9 @@ function Get-FNTFileMetadata {
                 if ($surname -and $given) {
                     $s7 = $surname.Substring(0, [Math]::Min(7, $surname.Length))
                     $g1 = $given.Substring(0, 1).ToUpper()
-                    # Format as Titlecase surname (up to 7 chars) + 1 uppercase initial
                     $s7Formatted = (Get-Culture).TextInfo.ToTitleCase($s7.ToLower())
                     $result.AuthorSurname7 = $s7Formatted
                     $result.AuthorInitial  = $g1
-                    # Combine surname + initial, then pad with '-' to length 8 if needed
                     $baseSeg = "$s7Formatted$g1"
                     if ($baseSeg.Length -lt 8) {
                         $baseSeg = $baseSeg.PadRight(8, '-')
@@ -1160,7 +1209,11 @@ function Get-FNTFileMetadata {
         }
     }
 
-    return [pscustomobject]$result
+    $finalObj = [pscustomobject]$result
+    if ($cacheKey) {
+        $script:MetadataCache[$cacheKey] = $finalObj
+    }
+    return $finalObj
 }
 
 <#
@@ -1377,4 +1430,270 @@ function Test-FNTNamingConvention {
     }
 }
 
-Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Set-FNTConfigTheme, Test-FNTCustomTypeRules, ConvertTo-FNTProfile, Get-FNTFileMetadata, Test-FNTNamingConvention, Get-FNTNormalizedAuthorSegment
+<#
+.SYNOPSIS
+    Resolves filename collision conflicts according to the specified policy.
+
+.DESCRIPTION
+    Checks if a target destination path collides with an existing file or another entry in the batch.
+    Applies the requested policy ('Block', 'AutoNumber', 'Overwrite', 'Skip') to determine the final path.
+
+.PARAMETER DestinationPath
+    Target destination file path.
+
+.PARAMETER CollisionPolicy
+    Policy string ('Block', 'AutoNumber', 'Overwrite', 'Skip').
+
+.PARAMETER ClaimedPaths
+    Hashtable tracking paths already allocated in the current execution batch.
+
+.OUTPUTS
+    [PSCustomObject] Object containing resolved Path and Action code ('Keep', 'AutoNumber', 'Overwrite', 'Skip').
+#>
+function Resolve-FNTDestinationCollision {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$DestinationPath,
+        [string]$CollisionPolicy = 'Block',
+        [Parameter(Mandatory)][hashtable]$ClaimedPaths
+    )
+
+    $currentPath = $DestinationPath
+    $dir = [System.IO.Path]::GetDirectoryName($currentPath)
+    $fileNameNoExt = [System.IO.Path]::GetFileNameWithoutExtension($currentPath)
+    $ext = [System.IO.Path]::GetExtension($currentPath)
+
+    $isCollision = $ClaimedPaths.ContainsKey($currentPath) -or (Test-Path -LiteralPath $currentPath)
+
+    if (-not $isCollision) {
+        $ClaimedPaths[$currentPath] = $true
+        return [pscustomobject]@{
+            Path   = $currentPath
+            Action = 'Keep'
+        }
+    }
+
+    switch ($CollisionPolicy) {
+        'AutoNumber' {
+            $counter = 1
+            while ($ClaimedPaths.ContainsKey($currentPath) -or (Test-Path -LiteralPath $currentPath)) {
+                $newName = "${fileNameNoExt}_${counter}${ext}"
+                $currentPath = Join-Path $dir $newName
+                $counter++
+            }
+            $ClaimedPaths[$currentPath] = $true
+            return [pscustomobject]@{
+                Path   = $currentPath
+                Action = 'AutoNumber'
+            }
+        }
+        'Overwrite' {
+            $ClaimedPaths[$currentPath] = $true
+            return [pscustomobject]@{
+                Path   = $currentPath
+                Action = 'Overwrite'
+            }
+        }
+        'Skip' {
+            return [pscustomobject]@{
+                Path   = $null
+                Action = 'Skip'
+            }
+        }
+        default {
+            throw (New-FNTException -Code 'Destination.Collision' -Message "Destination path already exists or collides: '$DestinationPath'.")
+        }
+    }
+}
+
+<#
+.SYNOPSIS
+    Serializes a list of completed file operations to a JSON undo log manifest.
+
+.DESCRIPTION
+    Creates a timestamped JSON file in the specified log directory containing details of moved/copied files
+    for rollback purposes.
+
+.PARAMETER Operations
+    Array of operation record objects (Mode, SourcePath, DestinationPath).
+
+.PARAMETER LogDirectory
+    Directory where undo manifest JSON files are stored.
+
+.OUTPUTS
+    [String] Path to created undo manifest file.
+#>
+function Export-FNTUndoManifest {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][object[]]$Operations,
+        [Parameter(Mandatory)][string]$LogDirectory
+    )
+
+    if (-not (Test-Path -LiteralPath $LogDirectory -PathType Container)) {
+        New-Item -ItemType Directory -Path $LogDirectory -Force | Out-Null
+    }
+
+    $timestamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+    $manifestPath = Join-Path $LogDirectory ("undo_$timestamp.json")
+
+    $manifestData = [pscustomobject][ordered]@{
+        Timestamp  = (Get-Date -Format 'o')
+        Operations = @($Operations)
+    }
+
+    $json = $manifestData | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText($manifestPath, $json, [System.Text.Encoding]::UTF8)
+
+    return $manifestPath
+}
+
+<#
+.SYNOPSIS
+    Reverts file operations recorded in an undo manifest JSON file.
+
+.DESCRIPTION
+    Reads a specified undo manifest and moves/deletes files in reverse order to restore previous state.
+
+.PARAMETER ManifestPath
+    Path to the undo manifest JSON file.
+
+.OUTPUTS
+    [PSCustomObject] Summary object containing RevertedCount, FailedCount, and Details array.
+#>
+function Invoke-FNTUndoOperation {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        throw "Undo manifest not found: $ManifestPath"
+    }
+
+    $raw = [System.IO.File]::ReadAllText($ManifestPath, [System.Text.Encoding]::UTF8)
+    $manifest = $raw | ConvertFrom-Json
+
+    $reverted = 0
+    $failed = 0
+    $details = New-Object System.Collections.Generic.List[string]
+
+    $ops = @($manifest.Operations)
+    [array]::Reverse($ops)
+
+    foreach ($op in $ops) {
+        try {
+            $mode = [string]$op.Mode
+            $src = [string]$op.SourcePath
+            $dst = [string]$op.DestinationPath
+
+            if ($mode -eq 'Move') {
+                if (Test-Path -LiteralPath $dst -PathType Leaf) {
+                    $parentSrc = Split-Path $src -Parent
+                    if (-not (Test-Path -LiteralPath $parentSrc -PathType Container)) {
+                        New-Item -ItemType Directory -Path $parentSrc -Force | Out-Null
+                    }
+                    Move-Item -LiteralPath $dst -Destination $src -Force -ErrorAction Stop
+                    $reverted++
+                    $details.Add("Reverted move: '$dst' -> '$src'")
+                }
+                else {
+                    $failed++
+                    $details.Add("Cannot undo move: Destination '$dst' does not exist.")
+                }
+            }
+            elseif ($mode -eq 'Copy') {
+                if (Test-Path -LiteralPath $dst -PathType Leaf) {
+                    Remove-Item -LiteralPath $dst -Force -ErrorAction Stop
+                    $reverted++
+                    $details.Add("Removed copied file: '$dst'")
+                }
+                else {
+                    $failed++
+                    $details.Add("Cannot undo copy: Destination '$dst' does not exist.")
+                }
+            }
+        }
+        catch {
+            $failed++
+            $details.Add("Error reverting '$($op.DestinationPath)': $($_.Exception.Message)")
+        }
+    }
+
+    return [pscustomobject]@{
+        RevertedCount = $reverted
+        FailedCount   = $failed
+        Details       = $details.ToArray()
+    }
+}
+
+<#
+.SYNOPSIS
+    Performs safe directory enumeration for files handling long paths (MAX_PATH) and inaccessible subdirectories.
+
+.DESCRIPTION
+    Wraps Get-ChildItem with error suppression for locked/long paths and handles Windows long-path prefixing.
+
+.PARAMETER Path
+    Root directory path to enumerate.
+
+.PARAMETER Recurse
+    Switch to recurse into subdirectories.
+
+.PARAMETER File
+    Switch to return files only.
+
+.PARAMETER Filter
+    Optional extension or file filter string.
+
+.OUTPUTS
+    [PSCustomObject[]] Collection of file objects.
+#>
+function Get-FNTSafeChildItem {
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$Recurse,
+        [switch]$File,
+        [string]$Filter
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Path) -or -not (Test-Path -LiteralPath $Path -PathType Container)) {
+        return @()
+    }
+
+    $searchPath = $Path
+    if ($searchPath -match '^[A-Za-z]:\\' -and -not $searchPath.StartsWith('\\?\')) {
+        $searchPath = '\\?\' + $searchPath
+    }
+
+    try {
+        $params = @{
+            LiteralPath = $searchPath
+            ErrorAction = 'SilentlyContinue'
+        }
+        if ($File) { $params['File'] = $true }
+        if ($Recurse) { $params['Recurse'] = $true }
+        if ($Filter) { $params['Filter'] = $Filter }
+
+        return @(Get-ChildItem @params)
+    }
+    catch {
+        try {
+            $fallbackParams = @{
+                LiteralPath = $Path
+                ErrorAction = 'SilentlyContinue'
+            }
+            if ($File) { $fallbackParams['File'] = $true }
+            if ($Recurse) { $fallbackParams['Recurse'] = $true }
+            if ($Filter) { $fallbackParams['Filter'] = $Filter }
+
+            return @(Get-ChildItem @fallbackParams)
+        }
+        catch {
+            return @()
+        }
+    }
+}
+
+Export-ModuleMember -Function Get-FNTLexicalTokens, Get-FNTTypeCandidates, Get-FNTTokens, Get-FNTTokenSignature, Get-FNTFieldInference, Test-FNTValueType, Match-FNTNamePattern, ConvertFrom-FNTLegacyTypeLabel, ConvertTo-FNTConfig, Set-FNTConfigLanguage, Set-FNTConfigTheme, Test-FNTCustomTypeRules, ConvertTo-FNTProfile, Get-FNTFileMetadata, Clear-FNTMetadataCache, Test-FNTNamingConvention, Get-FNTNormalizedAuthorSegment, Resolve-FNTDestinationCollision, Export-FNTUndoManifest, Invoke-FNTUndoOperation, Get-FNTSafeChildItem

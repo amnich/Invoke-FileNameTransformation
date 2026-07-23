@@ -328,6 +328,21 @@ $BuildPreview.Add_Click({
 
 $PreviewFilter.Add_SelectionChanged({ RefreshPreviewGrid })
 
+if ($CollisionPolicySelector) {
+    $CollisionPolicySelector.Add_SelectionChanged({
+            if ($script:PreviewRows.Count -gt 0) {
+                try { FullBuildPreview } catch {}
+            }
+        })
+}
+
+if ($Btn_UndoLastOperation) {
+    $Btn_UndoLastOperation.Add_Click({
+            try { Invoke-FNTUndoLastOperation }
+            catch { ErrorBox (T 'Title_Error') $_ }
+        })
+}
+
 $ExportAudit.Add_Click({
         try {
             if (-not $script:PreviewRows.Count) { throw (T 'Err_BuildPrev1') }

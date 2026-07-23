@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Komunikat",
   "Line": "Linia",
   "Log": "Log",
@@ -404,5 +404,14 @@
   "ToolTip_CustomRuleApply": "Zastosuj zmiany do wybranej reguły niestandardowej",
   "ToolTip_CustomRuleTestInput": "Przykładowy ciąg tekstowy do przetestowania wzorca reguły",
   "ToolTip_CustomRuleTestBtn": "Uruchom test dopasowania regex dla podanego tekstu",
+  "Policy_Block": "Zablokuj przy kolizji",
+  "Policy_AutoNumber": "Automatyczna numeracja (_1, _2)",
+  "Policy_Overwrite": "Nadpisz istniejący plik",
+  "Policy_Skip": "Pomiń pliki z kolizją",
+  "Btn_UndoLast": "Cofnij ostatnią operację",
+  "ToolTip_CollisionPolicy": "Wybierz strategię obsługi kolizji, gdy plik docelowy istnieje lub występują duplikaty",
+  "ToolTip_UndoLast": "Cofnij poprzednią operację przenoszenia lub kopiowania na podstawie manifestu cofania",
+  "Status_UndoDone": "Cofanie zakończone. Przywrócono:",
+  "Status_UndoErr": "Cofanie zakończone z błędami.",
   "WinTitle": "Transformacja Nazw Plików"
 }

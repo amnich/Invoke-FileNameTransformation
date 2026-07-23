@@ -651,10 +651,16 @@
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
               <Button x:Name="BuildPreview" Content="{t:Btn_BuildPreview}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_BuildPreview}"/>
               <CheckBox x:Name="EnforcePattern" Content="{t:Chk_EnforcePattern}" Margin="10,0" VerticalAlignment="Center" ToolTip="{t:ToolTip_EnforcePattern}"/>
-              <ComboBox x:Name="PreviewFilter" Width="150" ToolTip="{t:ToolTip_PreviewFilter}">
+              <ComboBox x:Name="PreviewFilter" Width="120" ToolTip="{t:ToolTip_PreviewFilter}">
                 <ComboBoxItem Content="{t:Cbo_All}" IsSelected="True"/>
                 <ComboBoxItem Content="{t:Cbo_Errors}"/>
                 <ComboBoxItem Content="{t:Cbo_Ready}"/>
+              </ComboBox>
+              <ComboBox x:Name="CollisionPolicySelector" Width="160" Margin="8,0,0,0" ToolTip="{t:ToolTip_CollisionPolicy}">
+                <ComboBoxItem Content="{t:Policy_Block}" Tag="Block" IsSelected="True"/>
+                <ComboBoxItem Content="{t:Policy_AutoNumber}" Tag="AutoNumber"/>
+                <ComboBoxItem Content="{t:Policy_Overwrite}" Tag="Overwrite"/>
+                <ComboBoxItem Content="{t:Policy_Skip}" Tag="Skip"/>
               </ComboBox>
               <TextBlock x:Name="PreviewInfo" Margin="12,10,4,4"/>
             </StackPanel>
@@ -668,10 +674,14 @@
                 </ComboBox>
                 <Button x:Name="ExportAudit" Content="{t:Btn_Export}" ToolTip="{t:ToolTip_ExportAudit}"/>
                 <Button x:Name="OpenLog"     Content="{t:Btn_OpenLog}" ToolTip="{t:ToolTip_OpenLog}"/>
+                <Button x:Name="Btn_UndoLastOperation" Content="{t:Btn_UndoLast}" ToolTip="{t:ToolTip_UndoLast}"/>
                 <Button x:Name="Execute"     Content="{t:Btn_Execute}" Style="{StaticResource SuccessButton}" ToolTip="{t:ToolTip_Execute}"/>
               </WrapPanel>
             </StackPanel>
-            <DataGrid x:Name="PreviewGrid" ToolTip="{t:ToolTip_PreviewGrid}">
+            <DataGrid x:Name="PreviewGrid" ToolTip="{t:ToolTip_PreviewGrid}"
+                      VirtualizingStackPanel.IsVirtualizing="True"
+                      VirtualizingStackPanel.VirtualizationMode="Recycling"
+                      EnableRowVirtualization="True">
               <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
                   <Setter Property="ToolTip" Value="{Binding Details}"/>

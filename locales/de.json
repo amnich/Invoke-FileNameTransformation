@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Nachricht",
   "Line": "Linia",
   "Log": "Log",
@@ -404,5 +404,14 @@
   "ToolTip_CustomRuleApply": "Änderungen an der ausgewählten Regel anwenden",
   "ToolTip_CustomRuleTestInput": "Beispieltext zum Testen des Regelmusters",
   "ToolTip_CustomRuleTestBtn": "Regex-Test gegen den Beispieltext ausführen",
+  "Policy_Block": "Bei Kollision blockieren",
+  "Policy_AutoNumber": "Automatische Nummerierung (_1, _2)",
+  "Policy_Overwrite": "Zieldatei überschreiben",
+  "Policy_Skip": "Kollidierende Dateien überspringen",
+  "Btn_UndoLast": "Letzte Operation rückgängig machen",
+  "ToolTip_CollisionPolicy": "Wählen Sie die Kollisionsstrategie, wenn die Zieldatei bereits existiert",
+  "ToolTip_UndoLast": "Letzte Verschiebe- oder Kopieroperation anhand des Manifests rückgängig machen",
+  "Status_UndoDone": "Rückgängig abgeschlossen. Wiederhergestellt:",
+  "Status_UndoErr": "Rückgängig mit Fehlern abgeschlossen.",
   "WinTitle": "Dateinamen-Transformator"
 }

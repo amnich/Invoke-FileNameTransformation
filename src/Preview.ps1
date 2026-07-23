@@ -1,4 +1,4 @@
-﻿# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
+# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#
@@ -89,7 +89,8 @@ function UpdateOutputExample {
                     $values[$f.Name] = $item.Parts[$f.PartIndex].Value
                 }
             }
-            $meta = Get-FNTFileMetadata -Path $item.File.FullName
+            $reqFields = @($script:OutputParts | ForEach-Object { $_.Value })
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName -RequestedFields $reqFields
             $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
             $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
@@ -189,6 +190,14 @@ function FullBuildPreview {
         $maps[$def.Name] = $h
     }
 
+    $reqFields = @($script:OutputParts | ForEach-Object { $_.Value })
+    $collisionPolicy = 'Block'
+    if ($CollisionPolicySelector -and $CollisionPolicySelector.SelectedItem) {
+        $tagVal = [string]$CollisionPolicySelector.SelectedItem.Tag
+        if ($tagVal) { $collisionPolicy = $tagVal }
+    }
+    $claimedPaths = @{}
+
     # Process each file
     $filesToProcess = if ($EnforcePattern.IsChecked) {
         $all = @()
@@ -229,7 +238,7 @@ function FullBuildPreview {
                     }
                 }
             }
-            $meta = Get-FNTFileMetadata -Path $item.File.FullName
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName -RequestedFields $reqFields
             $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
             $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
@@ -272,24 +281,34 @@ function FullBuildPreview {
                 }
             }
 
-            # Validate filename characters
-            if ($name.IndexOfAny([IO.Path]::GetInvalidFileNameChars()) -ge 0) {
-                throw ($(T 'Err_InvalidChars') + " $name")
-            }
-
             # Extension
             $ext = if ($KeepExtension.IsChecked) { $item.File.Extension }
             else { $NewExtension.Text.Trim() }
             if ($ext -and -not $ext.StartsWith('.')) { $ext = '.' + $ext }
 
-            # Build destination path
+            # Build destination path & check collisions
             $relativeDir = if ($PreserveFolderStructure.IsChecked) { Split-Path $row.SourceRelative -Parent } else { '' }
             $destDir = if ($relativeDir) { Join-Path $dst $relativeDir } else { $dst }
-            $row.DestinationPath = Join-Path $destDir ($name + $ext)
-            $row.DestinationRelative = $row.DestinationPath.Substring($dst.TrimEnd('\').Length).TrimStart('\')
+            $rawDestPath = Join-Path $destDir ($name + $ext)
 
-            # Details: show all field values
-            $row.Details = ($values.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join '; '
+            $res = Resolve-FNTDestinationCollision -DestinationPath $rawDestPath -CollisionPolicy $collisionPolicy -ClaimedPaths $claimedPaths
+            if ($res.Action -eq 'Skip') {
+                $row.StatusCode = 'Skipped'
+                $row.Status = (T 'Policy_Skip')
+                $row.Details = (T 'Policy_Skip')
+            }
+            else {
+                $row.DestinationPath = $res.Path
+                $row.DestinationRelative = $row.DestinationPath.Substring($dst.TrimEnd('\').Length).TrimStart('\')
+                $detailsList = ($values.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join '; '
+                if ($res.Action -eq 'AutoNumber') {
+                    $detailsList = "[AutoNumber] $detailsList"
+                }
+                elseif ($res.Action -eq 'Overwrite') {
+                    $detailsList = "[Overwrite] $detailsList"
+                }
+                $row.Details = $detailsList
+            }
 
         }
         catch {
@@ -301,24 +320,26 @@ function FullBuildPreview {
         $script:PreviewRows.Add([pscustomobject]$row)
     }
 
-    # Check for duplicate destinations
-    $dupes = @(
-        $script:PreviewRows |
-        Where-Object { $_.DestinationPath } |
-        Group-Object DestinationPath |
-        Where-Object { $_.Count -gt 1 } |
-        Select-Object -ExpandProperty Name
-    )
-    foreach ($r in $script:PreviewRows) {
-        if ($r.DestinationPath -in $dupes) {
-            $r.StatusCode = 'Error'
-            $r.Status = (T 'Title_Error')
-            $r.Details = (T 'Err_DupDest')
-        }
-        elseif ($r.DestinationPath -and (Test-Path $r.DestinationPath)) {
-            $r.StatusCode = 'Error'
-            $r.Status = (T 'Title_Error')
-            $r.Details = (T 'Err_FileExists')
+    # Check for duplicate destinations if Block policy
+    if ($collisionPolicy -eq 'Block') {
+        $dupes = @(
+            $script:PreviewRows |
+            Where-Object { $_.DestinationPath } |
+            Group-Object DestinationPath |
+            Where-Object { $_.Count -gt 1 } |
+            Select-Object -ExpandProperty Name
+        )
+        foreach ($r in $script:PreviewRows) {
+            if ($r.DestinationPath -in $dupes) {
+                $r.StatusCode = 'Error'
+                $r.Status = (T 'Title_Error')
+                $r.Details = (T 'Err_DupDest')
+            }
+            elseif ($r.DestinationPath -and (Test-Path $r.DestinationPath)) {
+                $r.StatusCode = 'Error'
+                $r.Status = (T 'Title_Error')
+                $r.Details = (T 'Err_FileExists')
+            }
         }
     }
 
@@ -370,11 +391,14 @@ function ExecuteCopy {
     $ProgressBar.Value = 0
 
     $ok = 0; $fail = 0
+    $completedOps = New-Object System.Collections.Generic.List[object]
 
     foreach ($r in $script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }) {
         try {
             $dir = Split-Path $r.DestinationPath -Parent
-            New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            if (-not (Test-Path -LiteralPath $dir -PathType Container)) {
+                New-Item -ItemType Directory -Path $dir -Force | Out-Null
+            }
             if ($mode -eq 'Move') {
                 Move-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
                 Log "$(T 'Log_Moved') $($r.SourcePath) -> $($r.DestinationPath)"
@@ -383,6 +407,11 @@ function ExecuteCopy {
                 Copy-Item -LiteralPath $r.SourcePath -Destination $r.DestinationPath -ErrorAction Stop -Force
                 Log "$(T 'Log_Copied') $($r.SourcePath) -> $($r.DestinationPath)"
             }
+            $completedOps.Add([pscustomobject]@{
+                Mode            = $mode
+                SourcePath      = $r.SourcePath
+                DestinationPath = $r.DestinationPath
+            })
             $ok++
         }
         catch {
@@ -393,6 +422,16 @@ function ExecuteCopy {
         UpdateUI
     }
 
+    if ($completedOps.Count -gt 0) {
+        try {
+            $manifestPath = Export-FNTUndoManifest -Operations $completedOps.ToArray() -LogDirectory $script:LogRoot
+            Log "Undo manifest created: $manifestPath"
+        }
+        catch {
+            Log "Failed to create undo manifest: $($_.Exception.Message)" 'WARNING'
+        }
+    }
+
     $ProgressBar.Visibility = 'Collapsed'
     if ($mode -eq 'Move') {
         SetStatus "$(T 'Status_Moved') $ok; $(T 'Msg_Errors'): $fail"
@@ -400,4 +439,28 @@ function ExecuteCopy {
     else {
         SetStatus "$(T 'Status_Copied') $ok; $(T 'Msg_Errors'): $fail"
     }
+}
+
+function Invoke-FNTUndoLastOperation {
+    if (-not $script:LogRoot -or -not (Test-Path -LiteralPath $script:LogRoot -PathType Container)) {
+        throw (T 'Title_MissingData')
+    }
+    $latestManifest = Get-ChildItem -LiteralPath $script:LogRoot -Filter 'undo_*.json' | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if (-not $latestManifest) {
+        throw (T 'Title_MissingData')
+    }
+    $confirm = [Windows.MessageBox]::Show(
+        "Revert last operation from '$($latestManifest.Name)'?",
+        (T 'Title_Confirm'), 'YesNo', 'Question'
+    )
+    if ($confirm -ne 'Yes') { return }
+
+    $res = Invoke-FNTUndoOperation -ManifestPath $latestManifest.FullName
+    if ($res.FailedCount -eq 0) {
+        SetStatus "$(T 'Status_UndoDone') $($res.RevertedCount)"
+    }
+    else {
+        SetStatus "$(T 'Status_UndoErr') Reverted: $($res.RevertedCount), Failed: $($res.FailedCount)"
+    }
+    Remove-Item -LiteralPath $latestManifest.FullName -Force -ErrorAction SilentlyContinue
 }

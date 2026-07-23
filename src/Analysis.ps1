@@ -56,12 +56,7 @@ function AnalyzePatterns {
         throw (T 'Err_SrcNotExist')
     }
 
-    $files = if ($Recursive.IsChecked) {
-        @(Get-ChildItem -LiteralPath $src -File -Recurse)
-    }
-    else {
-        @(Get-ChildItem -LiteralPath $src -File)
-    }
+    $files = Get-FNTSafeChildItem -Path $src -File -Recurse:$Recursive.IsChecked
     if (-not $files) { throw (T 'Err_NoFiles') }
 
     # Populate extension filter
@@ -88,12 +83,7 @@ function BuildPatternList {
     $ext = [string]$ExtensionFilter.SelectedItem
     if (-not $ext) { return }
 
-    $files = if ($Recursive.IsChecked) {
-        @(Get-ChildItem -LiteralPath $src -File -Recurse -Filter "*$ext")
-    }
-    else {
-        @(Get-ChildItem -LiteralPath $src -File -Filter "*$ext")
-    }
+    $files = Get-FNTSafeChildItem -Path $src -File -Recurse:$Recursive.IsChecked -Filter "*$ext"
 
     # Group files by token structure signature
     $raw = @()
