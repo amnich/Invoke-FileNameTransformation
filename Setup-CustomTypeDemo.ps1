@@ -61,14 +61,21 @@ else {
 
 $sampleFiles = @(
     @{ Name = "Report_FIN-101_2026-01-16.pdf"; Content = "Financial report for Dept FIN-101" },
+    @{ Name = "Report_HRD-202_2026-02-01.docx"; Content = "HR report for Dept HRD-202" },
+    @{ Name = "Report_MKT-303_2026-03-15.pptx"; Content = "Marketing report for Dept MKT-303" },
     @{ Name = "Invoice_HRD-202_2026-02-01.xlsx"; Content = "HR Department Invoice" },
     @{ Name = "INV-202607-00123_AcmeCorp.pdf"; Content = "Invoice for Acme Corp" },
+    @{ Name = "INV-999999-54321_CosmoCorp.pdf"; Content = "Invoice for Cosmo Corp" },
     @{ Name = "INV-202607-00124_GlobalTech.pdf"; Content = "Invoice for Global Tech" },
     @{ Name = "TICKET-84920_Urgent_Fix.docx"; Content = "Service desk ticket documentation" },
     @{ Name = "TICKET-10492_Database_Migration.log"; Content = "Migration log for ticket 10492" },
+    @{ Name = "TICKET-00001_Initial_Setup.txt"; Content = "Initial setup instructions for ticket 00001" },
     @{ Name = "Doc_PRJ-2026-042_Draft.docx"; Content = "Project 2026-042 draft specs" },
     @{ Name = "Doc_PROJECT-2025-001_Final.pdf"; Content = "Project 2025-001 final document" },
-    @{ Name = "Audit_SN-A1B2-C3D4_Server01.log"; Content = "Hardware audit log for serial SN-A1B2-C3D4" }
+    @{ Name = "Doc_PRJ-2026-042_ReviewNotes.txt"; Content = "Review notes for project 2026-042" },
+    @{ Name = "Audit_SN-A1B2-C3D4_Server01.log"; Content = "Hardware audit log for serial SN-A1B2-C3D4" },
+    @{ Name = "Audit_SN-Z9Y8-X7W6_Server02.log"; Content = "Hardware audit log for serial SN-Z9Y8-X7W6" },
+    @{ Name = "Audit_SN-1234-5678_Server03.log"; Content = "Hardware audit log for serial SN-1234-5678" }
 )
 
 Write-Host "[+] Populating demo files..." -ForegroundColor Green

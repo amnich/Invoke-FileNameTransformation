@@ -1,4 +1,4 @@
-# Custom Type Rules - Testing Guide
+﻿# Custom Type Rules - Testing Guide
 
 Welcome! This folder contains test files pre-configured to work with **Invoke-FileNameTransformation**.
 

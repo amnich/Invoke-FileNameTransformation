@@ -16,6 +16,20 @@ $SourcePath.Add_TextChanged({ Update-PathSuggestions $SourcePath $SourcePathSugg
 $DestinationPath.Add_TextChanged({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
 $SourcePath.Add_GotKeyboardFocus({ Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
 $DestinationPath.Add_GotKeyboardFocus({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
+$SourcePath.Add_PreviewKeyDown({
+        if ($_.Key -eq [System.Windows.Input.Key]::Tab -and $SourcePathSuggestions.IsOpen -and $SourcePathSuggestionList.Items.Count -gt 0) {
+            $SourcePathSuggestionList.SelectedIndex = 0
+            Apply-PathSuggestion $SourcePath $SourcePathSuggestions $SourcePathSuggestionList
+            $_.Handled = $true
+        }
+    })
+$DestinationPath.Add_PreviewKeyDown({
+        if ($_.Key -eq [System.Windows.Input.Key]::Tab -and $DestinationPathSuggestions.IsOpen -and $DestinationPathSuggestionList.Items.Count -gt 0) {
+            $DestinationPathSuggestionList.SelectedIndex = 0
+            Apply-PathSuggestion $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList
+            $_.Handled = $true
+        }
+    })
 $SourcePathSuggestionList.Add_SelectionChanged({ Apply-PathSuggestion $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
 $DestinationPathSuggestionList.Add_SelectionChanged({ Apply-PathSuggestion $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
 

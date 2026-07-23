@@ -190,8 +190,7 @@ function T([string]`$Key) {
         else {
                 $ps2exeParameters.Debug = $true
         }
-        Invoke-ps2exe -inputFile $inputPath `
-                @ps2exeParameters
+        Invoke-ps2exe @ps2exeParameters
 
         if ($null -ne $signingCertificate) {
                 $signtool = "C:\Program Files (x86)\Windows Kits\10\bin\x64\signtool.exe"
