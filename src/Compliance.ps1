@@ -1,4 +1,4 @@
-# Compliance.ps1 — Naming convention compliance scanner, fixer, and metadata integration.
+﻿# Compliance.ps1 — Naming convention compliance scanner, fixer, and metadata integration.
 # Dot-sourced by the main script; operates in $script: scope.
 
 $script:ComplianceRows = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
@@ -58,10 +58,11 @@ function ScanCompliance {
     $selectedExt = [string]$ComplianceExtFilter.SelectedItem
 
     $filteredFiles = @(if ($selectedExt) {
-        @($files | Where-Object { $_.Extension.ToLower() -eq $selectedExt })
-    } else {
-        $files
-    })
+            @($files | Where-Object { $_.Extension.ToLower() -eq $selectedExt })
+        }
+        else {
+            $files
+        })
 
     $script:ComplianceRows.Clear()
     $okCount = 0
