@@ -1,6 +1,10 @@
 # Profiles.ps1 — Saving, loading, and refreshing JSON profiles.
 # Dot-sourced by the main script; operates in $script: scope.
 
+<#
+.SYNOPSIS
+    Enumerates saved JSON profiles in the profile root directory and updates the UI profile list.
+#>
 function RefreshProfiles {
     $items = @(
         Get-ChildItem $script:ProfileRoot -Filter '*.json' -ErrorAction SilentlyContinue |
@@ -9,6 +13,10 @@ function RefreshProfiles {
     $ProfileList.ItemsSource = $items
 }
 
+<#
+.SYNOPSIS
+    Prompts for a profile name and saves the current field, mapping, and output setup to a JSON profile file (Schema V2).
+#>
 function SaveProfile {
     $name = [Microsoft.VisualBasic.Interaction]::InputBox(
         (T 'Lbl_ProfileName'), (T 'Title_SaveProfile'), $script:CurrentProfileName
@@ -44,6 +52,13 @@ function SaveProfile {
     SetStatus "$(T 'Status_ProfSaved') $name"
 }
 
+<#
+.SYNOPSIS
+    Loads and normalizes a JSON profile file, restoring fields, transforms, mappings, and output name components.
+
+.PARAMETER path
+    Path to the JSON profile file.
+#>
 function LoadProfile([string]$path) {
     $rawProfile = Get-Content -LiteralPath $path -Raw -Encoding UTF8 | ConvertFrom-Json
     $p = ConvertTo-FNTProfile $rawProfile

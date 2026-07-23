@@ -1,4 +1,4 @@
-﻿# Translations.ps1 — Loads locale JSON files and defines the T() lookup function.
+# Translations.ps1 — Loads locale JSON files and defines the T() lookup function.
 # Dot-sourced by the main script; operates in $script: scope.
 
 $script:Translations = @{}
@@ -18,6 +18,16 @@ foreach ($lang in @('PL', 'EN', 'DE')) {
     }
 }
 
+<#
+.SYNOPSIS
+    Returns the localized translation string for a given key in the current language context.
+
+.PARAMETER Key
+    The translation string key (e.g. 'Err_NoFiles', 'Btn_Browse').
+
+.OUTPUTS
+    [String] Localized string or key itself if missing.
+#>
 function T([string]$Key) {
     if ($script:Translations[$script:CurrentLanguage].ContainsKey($Key)) {
         return $script:Translations[$script:CurrentLanguage][$Key]

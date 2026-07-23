@@ -1,93 +1,108 @@
 # Invoke-FileNameTransformation
 
-Invoke-FileNameTransformation is a GUI-based PowerShell utility for advanced file renaming and transformation. It helps users restructure filenames, enrich them with CSV-based mappings, and preview all changes safely before copying or moving files.
+`Invoke-FileNameTransformation` is an enterprise GUI-based PowerShell utility for advanced file renaming, structural transformation, and corporate naming compliance auditing. It helps users restructure filenames, enrich them with CSV/JSON/XML dictionary mappings, extract COM/EXIF file metadata, and preview all changes safely before copying or moving files.
 
-## Features
+---
 
+## Key Features
+
+- **7-Tab WPF Graphical Interface**:
+  - **Tab 0: Naming Compliance Audit** (`Tab_Compliance`): Audit and automatically standardize filenames according to corporate conventions (`YYYYMMDD_XxxxxxxY_DocType_FreeText_v1.ext`), extract author and creation dates from COM file properties or EXIF metadata, and rename non-compliant files in place.
+  - **Tab 1: Saved Profiles** (`Tab_Profile`): Save, load, duplicate, and manage reusable transformation profile configurations (JSON Schema V2).
+  - **Tab 2: File Analysis** (`Tab_Analysis`): Group source files by token structure signature, adjust tokenizer regex patterns, and inspect sample filenames.
+  - **Tab 3: Fields & Mappings** (`Tab_Fields`): Configure detected fields, resolve ambiguous types, attach per-field transformation chains (substring, date formatting, regex replacement, PowerShell scripts, sequential counters, casing, padding, math), and define dictionary lookups (CSV, TXT, JSON, XML).
+  - **Tab 4: Destination Name Builder** (`Tab_DestName`): Interactively assemble target output filename templates using field tokens, virtual metadata fields (`File_Date`, `File_Author`, `Hash_MD5`, etc.), static text, and separators.
+  - **Tab 5: Preview & Execution** (`Tab_Preview`): Generate a full transformation preview grid, detect collision errors or invalid path characters, export audit logs to CSV, and execute copy or move operations with real-time progress tracking.
+  - **Tab 6: Custom Type Rules** (`Tab_CustomRules`): Define, edit, save, and live-test custom domain-specific regular expression recognition rules (e.g., department codes, invoice numbers, ticket IDs).
+- **Interactive Tooltips**: Built-in, localized hover tooltips (`{t:ToolTip_...}`) across all UI buttons, inputs, drop-downs, and data grids in Polish, English, and German.
 - **Typed Pattern Parsing**: Break incoming filenames into fields and automatically recognize text, integers, decimals, dates/times, GUIDs, versions, and configured custom types.
-- **Composite Values**: Keep structured values such as `2026-01-16` or a punctuated GUID together even when their punctuation is also a filename separator.
+- **Composite Values**: Keep structured values such as `2026-01-16` or a punctuated GUID together even when their punctuation matches a filename separator.
 - **Ambiguity Control**: Show competing interpretations and require an explicit field type before processing when automatic detection is not conclusive.
-- **Data Mapping**: Connect external CSV dictionaries to replace extracted values with richer output data.
-- **Text Transformations**: Apply substring extraction, padding, casing changes, replacements, and date formatting to any part of the filename.
-- **Output Templates**: Build target filenames from static text, extracted fields, and mapped values.
-- **Live Preview & Validation**: Preview the resulting file names in a grid and detect collisions, missing values, or invalid characters before execution.
-- **Saveable Profiles**: Export and reload complex configurations as JSON profiles.
-- **Multi-language Interface**: Built-in support for Polish, English, and German.
-- **Copy or Move Execution**: Run the transformation in copy or move mode and keep an audit log.
-- **Folder Layout Control**: Scan source subfolders independently from preserving their layout in the destination folder.
+- **Data Mapping**: Connect external CSV, JSON, or XML dictionaries to replace extracted values with richer output data.
+- **Metadata Integration**: Extract creation dates, author names, document titles, camera details, EXIF date taken, audio artists, and MD5/SHA256 file hashes.
+- **Multi-language Interface**: Built-in support for Polish (PL), English (EN), and German (DE) with dynamic runtime switching.
+- **Single-Executable Compilation**: Package the entire application—including core module, WPF XAML layout, localization dictionaries, and helper scripts—into a standalone EXE via `ps2exe.ps1`.
 
-## Requirements
+---
 
-- Windows PowerShell 5.1
-- Windows OS with WPF and WinForms support
-- `FileNameTransformation.Core.psm1` in the same folder when running the development script
+## System Requirements
 
-The executable produced by `ps2exe.ps1` embeds the core module, `src` scripts,
-locale JSON files, and `MainWindow.xaml`; it can be distributed as a single EXE.
+- **Operating System**: Windows 10, Windows 11, or Windows Server 2016+
+- **PowerShell**: Windows PowerShell 5.1 (or PowerShell 7.x with Windows Desktop SDK)
+- **Dependencies**: Built-in WPF (`PresentationFramework`) and WinForms assemblies (`System.Windows.Forms`, `System.Drawing`).
 
-## Usage
+---
 
-Run the script from PowerShell in the repository folder:
+## Getting Started
+
+### Running the Development Script
+
+Run the main script from PowerShell in the repository folder:
 
 ```powershell
 .\Invoke-FileNameTransformation.ps1
 ```
 
-For a command prompt, shortcut, or automation scenario:
+For launch from Command Prompt, desktop shortcuts, or batch scripts:
 
 ```cmd
-powershell.exe -NoProfile -File ".\Invoke-FileNameTransformation.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\Invoke-FileNameTransformation.ps1"
 ```
 
-The development script launches the GUI in a fresh STA child process for every normal invocation. This lets you close the application, change the language, and start it again from the same PowerShell session without reusing WPF state. `-IsolatedHost` is internal and should not be specified manually.
+> [!NOTE]
+> The development launcher runs the GUI inside an isolated STA child process (`-IsolatedHost`) on every invocation. This permits closing the window, switching languages, and re-launching from the same PowerShell console without WPF thread locks or stale memory state.
 
-Use the standard PowerShell help commands for the script and packager:
+### Using In-Command Help
+
+Access full comment-based PowerShell help for all scripts and core functions:
 
 ```powershell
 Get-Help .\Invoke-FileNameTransformation.ps1 -Full
+Get-Help .\FileNameTransformation.Core.psm1 -Full
 Get-Help .\ps2exe.ps1 -Full
+Get-Help .\Setup-CustomTypeDemo.ps1 -Full
 ```
 
-## Typical Workflow
+---
 
-1. **Select folders**: Choose the source folder and output destination. Enable **Scan subfolders** to include nested files. Use **Preserve folder structure in destination folder** to recreate the source hierarchy at the destination, or clear it to copy or move all results directly into the selected destination folder.
-2. **Analyze names**: Review the detected filename structures and choose a pattern.
-3. **Define fields and mappings**: Review detected data types, resolve fields marked as ambiguous, apply transforms, and load CSV lookup files.
-4. **Build the output name**: Assemble the target filename from fields, text, and separators.
-5. **Preview and execute**: Review the results and run the copy or move operation.
+## Compiling to Standalone Executable
 
-## Tokenizer Regex Pattern
+To compile the application into a single self-contained executable:
 
-The **Regex Pattern** determines how each filename is split into values and separators during analysis. The expression must match every segment of the filename. Use the named capture group `(?<sep>...)` for literal separators; every other match is treated as a value that can become a field.
+```powershell
+# Build production executable (Invoke-FileNameTransformation.exe)
+.\ps2exe.ps1 -Output "Invoke-FileNameTransformation.exe"
 
-The default pattern splits on underscores, hyphens, and whitespace:
-
-```regex
-(?<value>[^_\-\s]+)|(?<sep>[_\-\s]+)
+# Build debug executable with embedded console window
+.\ps2exe.ps1 -Output "Invoke-FileNameTransformation_Debug.exe" -DebugBuild
 ```
 
-The expression is validated before analysis. It must define `sep`, cannot produce zero-length matches, and must cover the complete filename. For example, `Report_20260116-Final` initially becomes the values `Report`, `20260116`, and `Final`, with `_` and `-` preserved as separators. To use different separators, include them in the `sep` group, such as `(?<value>[^.]+)|(?<sep>[.])` for dot-separated names.
+The packager embeds:
+- `FileNameTransformation.Core.psm1`
+- `MainWindow.xaml`
+- `locales/en.json`, `locales/pl.json`, `locales/de.json`
+- All helper scripts in `src/*.ps1` (`Analysis.ps1`, `Compliance.ps1`, `Events.ps1`, `Mappings.ps1`, `Preview.ps1`, `Profiles.ps1`, `Transforms.ps1`, `Translations.ps1`, `UI.ps1`)
 
-After lexical tokenization, semantic recognition evaluates individual values and adjacent spans. This allows `Report_2025-01-16_Final` to contain one date field even though hyphens are normal separators. Recognition uses invariant numeric parsing and calendar-valid exact date formats instead of only matching the value's shape.
+---
 
-## Data Types and Ambiguity
+## Corporate Naming Compliance Audit
 
-Built-in recognition supports:
+**Tab 0 (Compliance Audit)** implements automated auditing and fixing for enterprise naming conventions:
 
-- Text
-- Integer
-- Decimal using the invariant `.` decimal separator
-- Date and time in supported exact formats
-- GUID
-- Version with two to four numeric components
+- **Target Standard**: `YYYYMMDD_XxxxxxxY_DocType_FreeText_v1.ext`
+  - `YYYYMMDD`: 8-digit date string.
+  - `XxxxxxxY`: 8-character PascalCase author code starting and ending with uppercase letters.
+  - `DocType`: Document type classification keyword (e.g. `Raport`, `Umowa`, `Dokument`).
+  - `FreeText`: Sanitized description text without invalid characters.
+  - `v1`: Version tag (e.g. `v1`, `v2`, `v1.2`).
+- **Metadata Fallbacks**: Automatically pulls creation dates and author names from Shell COM properties (`System.Author`), EXIF metadata, or file system timestamps.
+- **In-Place Fixes**: Click **Fix Selected** (`Btn_FixSelected`) to safely rename non-compliant files in place directly within the source folder after review.
 
-When a value has several valid meanings, the field is marked **Ambiguous**. For example, `010225` can be an integer and can also match multiple compact date formats. Select the field and choose its intended data type and date format before building the full preview. The selection is stored in version 2 profiles.
+---
 
-Pattern enforcement is intentionally strict. Other files must have the same number and order of fields and the same literal separators. Preview errors identify the failing token, expected structure or type, and actual value; the application does not guess missing fields.
+## Custom Data Type Rules
 
-## Custom Data Types
-
-Custom named regex types can be managed via Tab 6 in the GUI or configured directly in `config.json`. For detailed documentation, schema details, and practical examples, see the [Custom Type Rules Guide](CUSTOM_TYPE_RULES.md).
+Custom named regex types can be managed via **Tab 6 (Custom Rules)** in the GUI or configured directly in `config.json`. For detailed documentation, schema details, and practical examples, see the [Custom Type Rules Guide](CUSTOM_TYPE_RULES.md).
 
 ```json
 {
@@ -95,8 +110,8 @@ Custom named regex types can be managed via Tab 6 in the GUI or configured direc
   "Language": "EN",
   "CustomTypeRules": [
     {
-      "Id": "DepartmentCode",
-      "DisplayName": "Department code",
+      "Id": "DeptCode",
+      "DisplayName": "Department Code",
       "Pattern": "^[A-Z]{3}-\\d{3}$",
       "Enabled": true,
       "AllowComposite": true
@@ -105,45 +120,24 @@ Custom named regex types can be managed via Tab 6 in the GUI or configured direc
 }
 ```
 
-The language selector writes the selected language to the script-local `config.json`; that valid saved value takes precedence over the operating system language at the next start. Changing the UI language preserves custom rules. Invalid custom patterns are reported at startup.
-Custom rule IDs must start with a letter and may contain letters, numbers, dots, underscores, and hyphens. IDs are case-insensitively unique. Invalid or duplicate rules are reported separately at startup and skipped without disabling built-in recognition. `DisplayName` is optional and defaults to `Id`.
+To set up an interactive testing environment with sample files and pre-configured custom types:
 
-Custom rules can be created, updated, deleted, and tested live using **Tab 6 (Custom Rules Management & Live Tester)** in the GUI, or edited in `config.json`.
+```powershell
+.\Setup-CustomTypeDemo.ps1
+```
 
-## Tests
+---
 
-Run the parser and matcher tests with Pester:
+## Running Unit Tests
+
+Execute the automated Pester test suite for tokenization, pattern matching, type inference, profile normalization, and compliance validation:
 
 ```powershell
 Invoke-Pester .\tests\FileNameTransformation.Core.Tests.ps1
 ```
 
-## Manual Test Dataset
+---
 
-Create an empty test folder and add files with these names before running analysis:
+## License & Support
 
-```text
-Report_20260116_Final.csv
-Report_2025-01-16_Final.csv
-Report_010225_Final.csv
-Report_123.45_Final.csv
-Report_1.2.3_Final.csv
-Report_6F9619FF-8B86-D011-B42D-00C04FC964FF_Final.csv
-Report_2025-02-31_Final.csv
-```
-
-Expected results:
-
-- `2025-01-16` is one `DateTime` field despite the hyphens.
-- `010225` is ambiguous and requires a type/date-format selection.
-- `123.45`, `1.2.3`, and the GUID are recognized as decimal, version, and GUID fields.
-- `2025-02-31` is not accepted as a valid date.
-- Changing a separator or removing a segment produces a strict preview error when **Enforce pattern** is enabled.
-
-## Notes
-
-- `config.json`, including the selected language and custom type rules, is read from the development script directory. Profiles and logs are stored under the user's AppData folder.
-- Existing profiles without a schema version are migrated in memory when loaded. They are not overwritten automatically.
-- If AppData is unavailable, the script falls back to the script directory or a temporary folder.
-- Preserving the folder structure is enabled by default. When it is disabled, files from different subfolders can produce duplicate destination names; the preview flags those collisions before execution.
-- The packaged executable is self-contained. The source folders and module are only needed for development or rebuilding it.
+Developed for enterprise PowerShell file automation workflows. Designed by AI Pair Programming in collaboration with the Google DeepMind team.

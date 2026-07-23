@@ -1,16 +1,16 @@
-# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
+﻿# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
 # Dot-sourced by the main script; operates in $script: scope.
 
 #region Utility Functions
 
 function Log([string]$message, [string]$level = 'INFO') {
+    if ([string]::IsNullOrWhiteSpace($script:AppRoot)) {
+        $script:AppRoot = [System.IO.Path]::GetTempPath()
+    }
+    if ([string]::IsNullOrWhiteSpace($script:LogRoot)) {
+        $script:LogRoot = Join-Path $script:AppRoot 'Logs'
+    }
     if ([string]::IsNullOrWhiteSpace($script:LogPath)) {
-        if ([string]::IsNullOrWhiteSpace($script:LogRoot)) {
-            $script:LogRoot = Join-Path $script:AppRoot 'Logs'
-        }
-        if ([string]::IsNullOrWhiteSpace($script:AppRoot)) {
-            $script:AppRoot = [System.IO.Path]::GetTempPath()
-        }
         New-Item -ItemType Directory -Path $script:LogRoot -Force | Out-Null
         $script:LogPath = Join-Path $script:LogRoot ('FileNameTransformer_{0:yyyyMMdd_HHmmss}.log' -f (Get-Date))
     }
@@ -20,7 +20,9 @@ function Log([string]$message, [string]$level = 'INFO') {
 }
 
 function SetStatus([string]$message) {
-    $StatusText.Text = $message
+    if ($null -ne $StatusText) {
+        $StatusText.Text = $message
+    }
     Log $message
 }
 
@@ -67,8 +69,9 @@ function GetLocalizedErrorMessage([Exception]$exception) {
 
 function ErrorBox([string]$title, $err) {
     $localizedMessage = GetLocalizedErrorMessage $err.Exception
+    $lineNum = if ($err.InvocationInfo) { $err.InvocationInfo.ScriptLineNumber } else { 'N/A' }
     $msg = "Komunikat: $localizedMessage"
-    $msg += "`nLinia:     $($err.InvocationInfo.ScriptLineNumber)"
+    $msg += "`nLinia:     $lineNum"
     $msg += "`nLog:       $script:LogPath"
     Log "$title | $localizedMessage" 'ERROR'
     [Windows.MessageBox]::Show($msg, $title, 'OK', 'Error') | Out-Null
@@ -91,9 +94,9 @@ function Get-DirectorySuggestions([string]$Path) {
         $typedPath = if ($Path) { $Path.Trim() } else { '' }
         if ([string]::IsNullOrWhiteSpace($typedPath)) {
             return @(Get-PSDrive -PSProvider FileSystem |
-                    Where-Object { $_.Root } |
-                    ForEach-Object { $_.Root } |
-                    Sort-Object -Unique)
+                Where-Object { $_.Root } |
+                ForEach-Object { $_.Root } |
+                Sort-Object -Unique)
         }
 
         if ($typedPath -match '^[A-Za-z]:$') {
@@ -112,10 +115,10 @@ function Get-DirectorySuggestions([string]$Path) {
         }
 
         return @(Get-ChildItem -LiteralPath $parentPath -Directory -ErrorAction Stop |
-                Where-Object { $_.Name.StartsWith($leafPrefix, [StringComparison]::OrdinalIgnoreCase) } |
-                Sort-Object Name |
-                Select-Object -First 20 |
-                ForEach-Object { $_.FullName })
+            Where-Object { $_.Name.StartsWith($leafPrefix, [StringComparison]::OrdinalIgnoreCase) } |
+            Sort-Object Name |
+            Select-Object -First 20 |
+            ForEach-Object { $_.FullName })
     }
     catch {
         return @()
@@ -123,6 +126,7 @@ function Get-DirectorySuggestions([string]$Path) {
 }
 
 function Update-PathSuggestions($TextBox, $Popup, $SuggestionList) {
+    if ($null -eq $TextBox -or $null -eq $Popup -or $null -eq $SuggestionList) { return }
     $suggestions = @(Get-DirectorySuggestions $TextBox.Text)
     $SuggestionList.ItemsSource = $suggestions
     $Popup.IsOpen = $TextBox.IsKeyboardFocusWithin -and $suggestions.Count -gt 0
@@ -140,7 +144,10 @@ function Apply-PathSuggestion($TextBox, $Popup, $SuggestionList) {
 
 function FileDialog {
     $dlg = New-Object Microsoft.Win32.OpenFileDialog
-    $dlg.Filter = 'CSV (*.csv)|*.csv|Tekst (*.txt)|*.txt|Wszystkie (*.*)|*.*'
+    $csvFilter = if (Get-Command 'T' -ErrorAction SilentlyContinue) { T 'Filter_CSV' } else { 'CSV (*.csv)' }
+    $txtFilter = if (Get-Command 'T' -ErrorAction SilentlyContinue) { T 'Filter_Text' } else { 'Text (*.txt)' }
+    $allFilter = if (Get-Command 'T' -ErrorAction SilentlyContinue) { T 'Filter_AllFiles' } else { 'All Files (*.*)' }
+    $dlg.Filter = "$csvFilter|*.csv|$txtFilter|*.txt|$allFilter|*.*"
     if ($dlg.ShowDialog()) { $dlg.FileName }
 }
 
@@ -247,6 +254,10 @@ function GetFieldCandidateSummary($field) {
     return ($labels -join ', ')
 }
 
+<#
+.SYNOPSIS
+    Resolves the active TypeId and Format for a field, accounting for manual overrides vs automatic inference.
+#>
 function GetResolvedFieldType($field) {
     if ($field.SelectedTypeId -and $field.SelectedTypeId -ne 'Auto') {
         return [pscustomobject]@{
@@ -268,6 +279,10 @@ function GetResolvedFieldType($field) {
     }
 }
 
+<#
+.SYNOPSIS
+    Validates field values against resolved type rules before execution.
+#>
 function ValidateFieldValues([hashtable]$values) {
     foreach ($field in $script:Fields) {
         if ($field.IsVirtual -or -not $values.ContainsKey($field.Name)) { continue }
@@ -275,7 +290,7 @@ function ValidateFieldValues([hashtable]$values) {
         if (-not (Test-FNTValueType -Value ([string]$values[$field.Name]) -TypeId $resolvedType.TypeId `
                     -Format $resolvedType.Format -CustomTypeRules @($script:CustomTypeRules))) {
             $formatText = if ($resolvedType.Format) { " ($($resolvedType.Format))" } else { '' }
-            throw "$($field.Name): '$($values[$field.Name])' != $($resolvedType.TypeId)$formatText"
+            throw ((T 'Err_TypeMismatch') -f $field.Name, $values[$field.Name], $resolvedType.TypeId, $formatText)
         }
     }
 }
@@ -292,6 +307,10 @@ public class DwmApi {
 }
 "@ -ErrorAction Ignore
 
+<#
+.SYNOPSIS
+    Applies Light or Dark WPF palette resource dictionaries and sets DWM window title bar attributes.
+#>
 function Set-WPFWindowTheme {
     param(
         [Parameter(Mandatory)][System.Windows.Window]$Window,

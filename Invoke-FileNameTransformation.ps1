@@ -1,54 +1,46 @@
-<#
+﻿<#
 .SYNOPSIS
-    Launches the File Name Transformer GUI for bulk renaming and copying.
+    Launches the File Name Transformer WPF GUI application for bulk file renaming, structure transformation, and compliance auditing.
 
 .DESCRIPTION
-    FileNameTransformer.GUI is a WPF-based PowerShell script that enables bulk renaming and copying of files.
-    It parses source filenames using structural patterns, applies value mappings from CSV dictionaries,
-    and performs text transformations such as casing changes, substrings, replacements, padding, and date formatting.
-    The script then builds target filenames from user-defined templates and offers a preview grid to validate
-    results before copying or moving files.
+    Invoke-FileNameTransformation is a feature-rich, multi-language WPF application built for Windows PowerShell 5.1.
+    It enables advanced pattern-based parsing of source filenames, value transformations, CSV dictionary lookups,
+    metadata extraction, and live validation preview before performing copy or move operations.
 
-    Tokenizer regex: the expression must match every filename segment. Use the named group
-    (?<sep>...) for literal separators; all other matches are treated as value fields. The default
-    (?<value>[^_\-\s]+)|(?<sep>[_\-\s]+) splits values on underscores, hyphens, and whitespace.
-    A second semantic pass recognizes integers, invariant decimals, exact dates/times, GUIDs,
-    versions, and configured custom regex types. Recognized composite values can span lexical
-    separators. Ambiguous values retain all candidates and require a field type selection.
-
-    Features:
-    - Multi-language UI (Polish, English, German).
-    - Saveable and reusable profiles in JSON format.
-    - Pattern-based source file parsing.
-    - Typed field inference with explicit ambiguity resolution.
-    - Strict structural matching when applying a selected pattern to other files.
-    - External CSV-based mapping support.
-    - Preview and validation for collisions, missing values, and invalid characters.
-    - Copy or move execution mode with audit logging.
-    - Independent options for scanning subfolders and preserving their structure at the destination.
-
-    The saved language in config.json takes precedence over the operating system language. Each normal
-    script invocation starts the GUI in an isolated STA PowerShell host so it can be reopened safely
-    from the same interactive PowerShell session.
+    Key Features:
+    - 7 Interactive GUI Tabs: Profile & Folder Setup, Structural Analysis, Field & Mapping Configuration, Destination Template Builder, Live Preview & Execution, Live Custom Type Regex Manager & Tester, and Name Compliance Scanner.
+    - Two-Pass Tokenizer Engine: Combines lexical regex splitting with semantic composite value merging for dates (exact valid calendar formats), invariant decimals, integers, GUIDs, versions (2 to 4 components), and custom regex types.
+    - Strict Structural Enforcement: Validates token counts, separator literals, and semantic field data types across file batches, flagging structural mismatches with precise error diagnostics.
+    - External CSV/TXT Mappings: Connects lookup files to map extracted values to virtual fields for enriched destination filenames.
+    - Extensive Field Transformation Suite: Casing adjustments (UPPERCASE, lowercase, Title Case), text trimming (Substring), padding, replacements, date formatting, math operations, diacritic transliteration, regex replace, PowerShell script expressions, and zero-padded sequential counters.
+    - Metadata Extraction: Reads EXIF photo tags, Office OpenXML properties, COM Shell audio tags, filesystem timestamps, and computes MD5/SHA256 content hashes.
+    - Process Isolation & Reentrancy: Automatically spawns an isolated STA child PowerShell process so the GUI can be reopened repeatedly from an interactive console without WPF apartment or event handler state conflicts.
+    - Saveable Profiles & Config: Saves complex renamer setups as JSON profiles (Version 2 schema). Persists language preferences (EN, PL, DE) and dark/light themes in script-local config.json.
 
 .EXAMPLE
     .\Invoke-FileNameTransformation.ps1
-    Launches the application GUI from the current folder.
+    Launches the application GUI using the default STA launcher.
 
 .EXAMPLE
-    powershell.exe -NoProfile -STA -File ".\Invoke-FileNameTransformation.ps1"
-    Starts the application from a command prompt, shortcut, or automation scenario. The script starts
-    its GUI in an isolated STA child host.
+    powershell.exe -NoProfile -STA -ExecutionPolicy Bypass -File ".\Invoke-FileNameTransformation.ps1"
+    Launches the application from a command prompt, shortcut, or task scheduler. The script launches an isolated STA host process.
 
 .PARAMETER IsolatedHost
-    Internal switch used by the launcher for the isolated GUI process. Do not specify it during normal use.
+    Internal switch parameter passed automatically when launching the isolated GUI host process.
+    Do not specify this switch manually during normal invocation.
+
+.INPUTS
+    None. Interactive GUI application.
+
+.OUTPUTS
+    None. Performs file copy/move operations, updates profile JSON files, creates audit logs in AppData, and exports CSV reports.
 
 .NOTES
-    Requires Windows PowerShell 5.1 and FileNameTransformation.Core.psm1 beside the development script.
-    The development script reads config.json from its own directory. Profiles and logs are stored under
-    the current user's AppData folder, with fallback to the script directory or temporary folder when needed.
-    When subfolder scanning is enabled, destination folder preservation is controlled separately and is enabled by default.
-    The Compliance tab is available only when the Windows USERDOMAIN environment variable contains BGH.
+    Prerequisites:
+    - Windows PowerShell 5.1 on Windows OS with WPF/WinForms support.
+    - Requires FileNameTransformation.Core.psm1 and src/ module files in the application directory.
+    - Reads config.json from the script directory. Profile JSON files and timestamped log files are saved under %APPDATA%\FileNameTransformer with automatic fallback to script folder or temp directory.
+    - Tab 0 (Name Compliance Scanner) is activated when the USERDOMAIN environment variable contains 'BGH'.
 #>
 
 #requires -Version 5.1

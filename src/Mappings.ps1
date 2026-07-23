@@ -1,6 +1,16 @@
 # Mappings.ps1 — CSV mapping functions and the mapping dialog.
 # Dot-sourced by the main script; operates in $script: scope.
 
+<#
+.SYNOPSIS
+    Reads column headers and detects delimiters from CSV, TXT, JSON, or XML mapping files.
+
+.PARAMETER path
+    File path to inspect.
+
+.OUTPUTS
+    [PSCustomObject] Object containing Delimiter, Headers array, and Format ('CSV', 'JSON', 'XML').
+#>
 function Get-FNTDictionaryHeaders([string]$path) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
         return [pscustomobject]@{ Delimiter = ','; Headers = @(); Format = 'CSV' }
@@ -63,10 +73,21 @@ function Get-FNTDictionaryHeaders([string]$path) {
     }
 }
 
+<#
+.SYNOPSIS
+    Alias for Get-FNTDictionaryHeaders.
+#>
 function CsvHeaders([string]$path) {
     return Get-FNTDictionaryHeaders $path
 }
 
+<#
+.SYNOPSIS
+    Ensures a virtual field entry exists in $script:Fields for mapping or metadata outputs.
+
+.PARAMETER name
+    The business field name for the virtual field.
+#>
 function EnsureVirtualField([string]$name) {
     $exists = $false
     foreach ($f in $script:Fields) {
@@ -87,6 +108,13 @@ function EnsureVirtualField([string]$name) {
     }
 }
 
+<#
+.SYNOPSIS
+    Opens a modal Windows Forms dialog to create or edit a dictionary mapping rule.
+
+.PARAMETER mapping
+    Optional existing mapping object to edit. If null, creates a new mapping.
+#>
 function AddMappingDialog([object]$mapping = $null) {
     $form = New-Object Windows.Forms.Form
     $form.Text = if ($mapping) { (T 'Title_EditMapping') } else { (T 'Title_AddMapping') }

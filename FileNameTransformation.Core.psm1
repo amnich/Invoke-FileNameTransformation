@@ -13,6 +13,26 @@ $script:DateFormats = @(
     'yyyy-MM-ddTHH:mm:ss', 'yyyy-MM-ddTHH:mm:ssZ', 'yyyy-MM-ddTHH:mm:sszzz'
 )
 
+<#
+.SYNOPSIS
+    Creates a structured Exception object with FNT error codes and diagnostic details.
+
+.DESCRIPTION
+    Instantiates an InvalidOperationException with attached FNT error code metadata
+    and contextual key-value pairs stored in the Exception.Data collection.
+
+.PARAMETER Code
+    Unique string identifier for the error category (e.g., 'Tokenizer.InvalidRegex').
+
+.PARAMETER Message
+    Human-readable description of the error condition.
+
+.PARAMETER Details
+    Hashtable of key-value diagnostic metadata attached to the exception.
+
+.OUTPUTS
+    [System.InvalidOperationException] Structured exception object with Data entries.
+#>
 function New-FNTException {
     param(
         [Parameter(Mandatory)][string]$Code,
@@ -28,6 +48,32 @@ function New-FNTException {
     return $exception
 }
 
+<#
+.SYNOPSIS
+    Constructs a data type candidate object for token classification.
+
+.DESCRIPTION
+    Returns a structured object representing a potential data type interpretation for a value token,
+    including type ID, date format string, custom rule ID, display name, and composite span support.
+
+.PARAMETER TypeId
+    Identifies the semantic data type (e.g., 'Integer', 'Decimal', 'DateTime', 'Guid', 'Version', 'Custom:RuleId').
+
+.PARAMETER Format
+    Exact date format string if TypeId is 'DateTime'.
+
+.PARAMETER RuleId
+    The ID of the custom regex type rule if TypeId starts with 'Custom:'.
+
+.PARAMETER DisplayName
+    User-friendly display name for custom data types.
+
+.PARAMETER AllowComposite
+    Boolean indicating whether this candidate type can span across lexical separators.
+
+.OUTPUTS
+    [PSCustomObject] Type candidate definition.
+#>
 function New-FNTTypeCandidate {
     param(
         [Parameter(Mandatory)][string]$TypeId,
@@ -46,6 +92,27 @@ function New-FNTTypeCandidate {
     }
 }
 
+<#
+.SYNOPSIS
+    Evaluates a string value against built-in and custom data type recognizers.
+
+.DESCRIPTION
+    Analyzes an input string and detects matching data types (Integer, Decimal, DateTime in exact formats,
+    GUID, Version, and Custom Regex types configured in CustomTypeRules). Returns an array of type candidates.
+
+.PARAMETER Value
+    The string token to test for type candidates.
+
+.PARAMETER CustomTypeRules
+    Array of custom type rule objects loaded from configuration.
+
+.EXAMPLE
+    Get-FNTTypeCandidates -Value '2026-01-16'
+    Returns DateTime candidate with format 'yyyy-MM-dd' and AllowComposite = $true.
+
+.OUTPUTS
+    [PSCustomObject[]] Collection of matching type candidate objects.
+#>
 function Get-FNTTypeCandidates {
     [CmdletBinding()]
     param(
@@ -120,6 +187,23 @@ function Get-FNTTypeCandidates {
     return $candidates.ToArray()
 }
 
+<#
+.SYNOPSIS
+    Splits a filename string into literal separator tokens and value tokens using a tokenizer regex.
+
+.DESCRIPTION
+    Executes a regex pattern containing the named capture group (?<sep>...) against a filename string.
+    Ensures complete string coverage and validates that no zero-length matches occur.
+
+.PARAMETER Name
+    The raw filename string (without directory path or extension).
+
+.PARAMETER Pattern
+    Tokenizer regex pattern with named group 'sep' for separators.
+
+.OUTPUTS
+    [PSCustomObject[]] Array of lexical token objects containing Value, IsSeparator, Start, and Length.
+#>
 function Get-FNTLexicalTokens {
     [CmdletBinding()]
     param(
@@ -174,6 +258,32 @@ function Get-FNTLexicalTokens {
     return $tokens.ToArray()
 }
 
+<#
+.SYNOPSIS
+    Constructs a composite value token object with detected type classification.
+
+.DESCRIPTION
+    Aggregates candidate types for a token or composite span of lexical parts, determining whether the
+    token is unambiguous ('Text', 'Integer', 'DateTime', etc.) or 'Ambiguous'.
+
+.PARAMETER Value
+    The string value of the token or merged composite span.
+
+.PARAMETER Start
+    Start character index within the source filename.
+
+.PARAMETER Length
+    Character length of the token.
+
+.PARAMETER Candidates
+    Array of type candidate objects matched for this value.
+
+.PARAMETER LexicalParts
+    Array of individual lexical tokens combined to form this value.
+
+.OUTPUTS
+    [PSCustomObject] Detailed value token object.
+#>
 function New-FNTValueToken {
     param(
         [Parameter(Mandatory)][string]$Value,
@@ -207,6 +317,26 @@ function New-FNTValueToken {
     }
 }
 
+<#
+.SYNOPSIS
+    Performs full two-pass tokenization of a filename into value and separator tokens.
+
+.DESCRIPTION
+    Performs lexical tokenization followed by a second semantic pass that recognizes composite values
+    (such as dates '2026-01-16' or GUIDs) spanning across punctuation separators.
+
+.PARAMETER Name
+    The filename string to tokenize.
+
+.PARAMETER Pattern
+    Tokenizer regex pattern with named group 'sep'. Defaults to splitting on underscores, hyphens, and spaces.
+
+.PARAMETER CustomTypeRules
+    Optional array of active custom type regex rules.
+
+.OUTPUTS
+    [PSCustomObject[]] Ordered collection of token objects (separators and value tokens).
+#>
 function Get-FNTTokens {
     [CmdletBinding()]
     param(
@@ -266,6 +396,20 @@ function Get-FNTTokens {
     return $result.ToArray()
 }
 
+<#
+.SYNOPSIS
+    Generates a structural signature string representing token order and separator literals.
+
+.DESCRIPTION
+    Creates a unique string signature combining separator literal values and value token type classifications.
+    Used for grouping files with identical structural patterns during analysis.
+
+.PARAMETER Tokens
+    Array of token objects returned by Get-FNTTokens.
+
+.OUTPUTS
+    [String] Token signature string (e.g. 'T:Text|S:_|T:DateTime|S:_|T:Text|').
+#>
 function Get-FNTTokenSignature {
     [CmdletBinding()]
     param([Parameter(Mandatory)][ValidateNotNullOrEmpty()][object[]]$Tokens)
@@ -276,6 +420,20 @@ function Get-FNTTokenSignature {
             }) -join '')
 }
 
+<#
+.SYNOPSIS
+    Infers common field data types across multiple files sharing the same structural pattern.
+
+.DESCRIPTION
+    Evaluates candidate data types across a collection of tokens from the same position across multiple files.
+    Determines if the position consistently represents a specific type (e.g., DateTime) or requires user resolution.
+
+.PARAMETER Tokens
+    Collection of value tokens at a specific field index from all analyzed files.
+
+.OUTPUTS
+    [PSCustomObject] Field inference result containing DetectedTypeId, CandidateTypes, IsAmbiguous, and Reason.
+#>
 function Get-FNTFieldInference {
     [CmdletBinding()]
     param(
@@ -363,6 +521,29 @@ function Get-FNTFieldInference {
     }
 }
 
+<#
+.SYNOPSIS
+    Validates whether a string value conforms to a specified data type and optional format.
+
+.DESCRIPTION
+    Tests if a value matches a requested type ID ('Integer', 'Decimal', 'DateTime', 'Guid', 'Version', or custom type)
+    and optional date format.
+
+.PARAMETER Value
+    The field value string to test.
+
+.PARAMETER TypeId
+    Target data type ID to test against.
+
+.PARAMETER Format
+    Optional required date format string if TypeId is 'DateTime'.
+
+.PARAMETER CustomTypeRules
+    Array of active custom type rules.
+
+.OUTPUTS
+    [Boolean] True if the value matches the type requirement, otherwise False.
+#>
 function Test-FNTValueType {
     [CmdletBinding()]
     param(
@@ -383,6 +564,32 @@ function Test-FNTValueType {
     return $false
 }
 
+<#
+.SYNOPSIS
+    Validates a filename against a selected structural pattern and extracts field values.
+
+.DESCRIPTION
+    Enforces strict structural matching of token counts, separator exact literals, and field type constraints.
+    Throws descriptive FNT pattern mismatch exceptions if validation fails.
+
+.PARAMETER Name
+    The filename string to test and parse.
+
+.PARAMETER PatternTokens
+    Array of template tokens defining the expected structure.
+
+.PARAMETER TokenizerPattern
+    Tokenizer regex pattern.
+
+.PARAMETER FieldTypes
+    Hashtable mapping field indices to expected type definitions.
+
+.PARAMETER CustomTypeRules
+    Array of active custom type rules.
+
+.OUTPUTS
+    [PSCustomObject] Object with Values hashtable (field index => extracted value) and actual Tokens array.
+#>
 function Match-FNTNamePattern {
     [CmdletBinding()]
     param(
@@ -438,6 +645,19 @@ function Match-FNTNamePattern {
     }
 }
 
+<#
+.SYNOPSIS
+    Performs a deep clone of a PowerShell object via JSON serialization.
+
+.DESCRIPTION
+    Serializes the input object to JSON and deserializes it back to construct an isolated deep copy.
+
+.PARAMETER InputObject
+    The object to clone.
+
+.OUTPUTS
+    Cloned object copy or null if InputObject was null.
+#>
 function Copy-FNTObject {
     param([AllowNull()]$InputObject)
 
@@ -445,6 +665,20 @@ function Copy-FNTObject {
     return ($InputObject | ConvertTo-Json -Depth 20 | ConvertFrom-Json)
 }
 
+<#
+.SYNOPSIS
+    Normalizes legacy localized field type display labels into standard type IDs.
+
+.DESCRIPTION
+    Maps legacy localized string representations (e.g. 'Niejednoznaczny', 'Data', 'dziesiętna', 'Wersja')
+    to standard internal type identifiers ('Ambiguous', 'DateTime', 'Decimal', 'Version', etc.).
+
+.PARAMETER TypeLabel
+    The raw legacy type label string.
+
+.OUTPUTS
+    [String] Standard type ID.
+#>
 function ConvertFrom-FNTLegacyTypeLabel {
     [CmdletBinding()]
     param([AllowNull()][string]$TypeLabel)
@@ -459,6 +693,20 @@ function ConvertFrom-FNTLegacyTypeLabel {
     return 'Text'
 }
 
+<#
+.SYNOPSIS
+    Normalizes and upgrades application configuration objects to schema Version 2.
+
+.DESCRIPTION
+    Ensures that config object contains all required properties (Version = 2, Language = PL/EN/DE,
+    Theme = Dark/Light, and CustomTypeRules array), supplying default values for missing entries.
+
+.PARAMETER Config
+    The raw configuration object loaded from config.json.
+
+.OUTPUTS
+    [PSCustomObject] Normalized configuration object.
+#>
 function ConvertTo-FNTConfig {
     [CmdletBinding()]
     param([AllowNull()]$Config)
@@ -490,6 +738,22 @@ function ConvertTo-FNTConfig {
     return $normalized
 }
 
+<#
+.SYNOPSIS
+    Updates the selected UI language in the configuration object.
+
+.DESCRIPTION
+    Sets the Language property of a normalized configuration object to 'PL', 'EN', or 'DE'.
+
+.PARAMETER Config
+    The target configuration object.
+
+.PARAMETER Language
+    The two-letter language code ('PL', 'EN', or 'DE').
+
+.OUTPUTS
+    [PSCustomObject] Updated configuration object.
+#>
 function Set-FNTConfigLanguage {
     [CmdletBinding()]
     param(
@@ -502,6 +766,22 @@ function Set-FNTConfigLanguage {
     return $normalized
 }
 
+<#
+.SYNOPSIS
+    Updates the selected visual theme in the configuration object.
+
+.DESCRIPTION
+    Sets the Theme property of a normalized configuration object to 'Light' or 'Dark'.
+
+.PARAMETER Config
+    The target configuration object.
+
+.PARAMETER Theme
+    The visual theme name ('Light' or 'Dark').
+
+.OUTPUTS
+    [PSCustomObject] Updated configuration object.
+#>
 function Set-FNTConfigTheme {
     [CmdletBinding()]
     param(
@@ -514,6 +794,21 @@ function Set-FNTConfigTheme {
     return $normalized
 }
 
+<#
+.SYNOPSIS
+    Validates custom data type rules for correct syntax, ID constraints, and duplicate IDs.
+
+.DESCRIPTION
+    Checks custom regex rules loaded from configuration or UI tab 6. Verifies regex compilation,
+    ID identifier syntax ('^[A-Za-z][A-Za-z0-9_.-]*$'), and checks for duplicate IDs.
+    Returns separate arrays of ValidRules and Error objects.
+
+.PARAMETER Rules
+    Array of rule objects to validate.
+
+.OUTPUTS
+    [PSCustomObject] Object containing ValidRules array and Errors array.
+#>
 function Test-FNTCustomTypeRules {
     [CmdletBinding()]
     param([object[]]$Rules = @())
@@ -580,6 +875,20 @@ function Test-FNTCustomTypeRules {
     }
 }
 
+<#
+.SYNOPSIS
+    Normalizes profile objects to schema Version 2.
+
+.DESCRIPTION
+    Upgrades legacy profile structures by populating missing property fields (SchemaVersion = 2,
+    TokenRegex, Fields, Mappings, OutputParts, KeepExtension, NewExtension, Transforms, IsVirtual, etc.).
+
+.PARAMETER Profile
+    Raw profile object read from JSON file.
+
+.OUTPUTS
+    [PSCustomObject] Normalized profile object.
+#>
 function ConvertTo-FNTProfile {
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Profile)
@@ -655,6 +964,21 @@ function ConvertTo-FNTProfile {
     return $normalized
 }
 
+<#
+.SYNOPSIS
+    Extracts comprehensive filesystem, COM shell extended properties, EXIF image attributes, Office document properties, and MD5/SHA256 hashes.
+
+.DESCRIPTION
+    Reads file properties including creation time, last write time, COM Shell properties (Author, Title, Audio tags),
+    Bitmap EXIF data (DateTaken, Dimensions, Camera model), Office OpenXML core properties (Creator, Title, Subject),
+    and calculates MD5 and SHA256 checksums.
+
+.PARAMETER Path
+    Absolute or relative path to the target file.
+
+.OUTPUTS
+    [PSCustomObject] Ordered dictionary containing extracted file metadata fields.
+#>
 function Get-FNTFileMetadata {
     [CmdletBinding()]
     param(
@@ -839,12 +1163,26 @@ function Get-FNTFileMetadata {
     return [pscustomobject]$result
 }
 
+<#
+.SYNOPSIS
+    Normalizes a raw author string into an 8-character compliance segment (Surname7 + 1 Initial).
+
+.DESCRIPTION
+    Parses full name strings (SurnameFirst, GivenFirst, or concatenated) and formats them into
+    a standard 8-character string consisting of up to 7 Titlecase surname characters and 1 Uppercase initial character,
+    padded on the right with hyphens '-' if shorter.
+
+.PARAMETER Raw
+    Raw author name string.
+
+.OUTPUTS
+    [String] Normalized 8-character author segment string (e.g. 'KowalskJ' or 'MnichA---').
+#>
 function Get-FNTNormalizedAuthorSegment {
     [CmdletBinding()]
     param(
         [AllowEmptyString()][string]$Raw
     )
-
     if ([string]::IsNullOrWhiteSpace($Raw)) {
         return 'UnknownA'
     }
@@ -889,6 +1227,20 @@ function Get-FNTNormalizedAuthorSegment {
     return $result.PadRight(8, '-')
 }
 
+<#
+.SYNOPSIS
+    Validates a filename against the enterprise naming scheme YYYYMMDD_XxxxxxxY_Zzzzz_Freitext.
+
+.DESCRIPTION
+    Checks if a filename base complies with the required structure: 8-digit date (yyyyMMdd), 8-character author segment,
+    document type, free text description, and optional version suffix (v1, v2). Identifies specific violations.
+
+.PARAMETER BaseName
+    Filename string without extension.
+
+.OUTPUTS
+    [PSCustomObject] Object containing IsCompliant boolean, Segments hashtable, Violations array, and AuthorAnalysis object.
+#>
 function Test-FNTNamingConvention {
     [CmdletBinding()]
     param(

@@ -1,13 +1,37 @@
 <#
 .SYNOPSIS
-    Creates a demo testing environment for Custom Type Rules in Invoke-FileNameTransformation.
+    Generates a full-featured demo testing environment for Custom Type Rules in Invoke-FileNameTransformation.
 
 .DESCRIPTION
-    This script:
-    1. Creates a sample folder 'Demo_CustomTypes' populated with realistic test files.
-    2. Updates 'config.json' with demo Custom Type Rules (DeptCode, InvoiceNo, TicketID, ProjectID, HardwareSN).
-    3. Generates a quick-start testing guide (README_TESTING.md) inside the demo folder.
-    4. Displays step-by-step instructions for testing custom types in the tool.
+    This setup utility builds a complete test bed for evaluating custom regex types in File Name Transformer:
+    1. Creates a sample directory (default: 'Demo_CustomTypes') populated with realistic test files matching various patterns
+       (Department codes like FIN-101, Invoice numbers like INV-202607-00123, Service desk tickets, Project IDs, Hardware Serial numbers).
+    2. Backs up existing config.json to config.json.bak and merges 5 demo Custom Type Rules (DeptCode, InvoiceNo, TicketID, ProjectID, HardwareSN).
+    3. Generates a detailed quick-start markdown testing guide (README_TESTING.md) inside the demo directory.
+    4. Displays colorized step-by-step console instructions for verifying rules using Tab 6 and running token analysis on Tab 1.
+
+.PARAMETER TargetFolderName
+    Specifies the name or path of the demo folder to create and populate. Defaults to 'Demo_CustomTypes'.
+
+.PARAMETER SkipConfigUpdate
+    When set, prevents the script from updating config.json with the demo custom type rules.
+
+.EXAMPLE
+    .\Setup-CustomTypeDemo.ps1
+    Creates the 'Demo_CustomTypes' directory, adds test files, updates config.json, and generates README_TESTING.md.
+
+.EXAMPLE
+    .\Setup-CustomTypeDemo.ps1 -TargetFolderName "MyCustomDemo" -SkipConfigUpdate
+    Populates sample files into 'MyCustomDemo' without modifying config.json.
+
+.INPUTS
+    None.
+
+.OUTPUTS
+    Creates demo directory, test files, config backup, config update, and README_TESTING.md guide.
+
+.NOTES
+    This setup script is useful for manual verification, demo presentations, and onboarding new users to the Custom Type Rules feature.
 #>
 
 [CmdletBinding()]

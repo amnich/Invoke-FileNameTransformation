@@ -333,13 +333,13 @@
         <TextBlock x:Name="LogText" DockPanel.Dock="Right" Foreground="{DynamicResource TextSecondary}"/>
         <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,15,0">
           <Label Content="{t:Lbl_Language}" VerticalAlignment="Center" Padding="0" Margin="0,0,4,0"/>
-          <ComboBox x:Name="LanguageSelector" Width="100" MinHeight="22" Padding="4,2">
+          <ComboBox x:Name="LanguageSelector" Width="100" MinHeight="22" Padding="4,2" ToolTip="{t:ToolTip_LanguageSelector}">
             <ComboBoxItem Content="Polski" Tag="PL"/>
             <ComboBoxItem Content="English" Tag="EN"/>
             <ComboBoxItem Content="Deutsch" Tag="DE"/>
           </ComboBox>
           <Label Content="{t:Lbl_Theme}" VerticalAlignment="Center" Padding="0" Margin="10,0,4,0"/>
-          <ComboBox x:Name="ThemeSelector" Width="100" MinHeight="22" Padding="4,2">
+          <ComboBox x:Name="ThemeSelector" Width="100" MinHeight="22" Padding="4,2" ToolTip="{t:ToolTip_ThemeSelector}">
             <ComboBoxItem Content="{t:Theme_Dark}" Tag="Dark"/>
             <ComboBoxItem Content="{t:Theme_Light}" Tag="Light"/>
           </ComboBox>
@@ -368,28 +368,28 @@
             <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <Label Grid.Row="0" Content="{t:Source_Folder}"/>
-          <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1"/>
+          <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1" ToolTip="{t:ToolTip_SourceFolder}"/>
           <Popup x:Name="SourcePathSuggestions" PlacementTarget="{Binding ElementName=SourcePath}"
                  Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
             <Border Width="520" MaxHeight="180" Background="{DynamicResource BgControl}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
               <ListBox x:Name="SourcePathSuggestionList" MaxHeight="178"/>
             </Border>
           </Popup>
-          <Button x:Name="BrowseSource" Grid.Row="0" Grid.Column="2" Content="{t:Btn_Browse}"/>
+          <Button x:Name="BrowseSource" Grid.Row="0" Grid.Column="2" Content="{t:Btn_Browse}" ToolTip="{t:ToolTip_BrowseSource}"/>
           <Label Grid.Row="1" Content="{t:Dest_Folder}"/>
-          <TextBox x:Name="DestinationPath" Grid.Row="1" Grid.Column="1"/>
+          <TextBox x:Name="DestinationPath" Grid.Row="1" Grid.Column="1" ToolTip="{t:ToolTip_DestFolder}"/>
           <Popup x:Name="DestinationPathSuggestions" PlacementTarget="{Binding ElementName=DestinationPath}"
                  Placement="Bottom" StaysOpen="False" AllowsTransparency="True">
             <Border Width="520" MaxHeight="180" Background="{DynamicResource BgControl}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
               <ListBox x:Name="DestinationPathSuggestionList" MaxHeight="178"/>
             </Border>
           </Popup>
-          <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}"/>
+          <Button x:Name="BrowseDestination" Grid.Row="1" Grid.Column="2" Content="{t:Btn_Browse}" ToolTip="{t:ToolTip_BrowseDest}"/>
           <CheckBox x:Name="Recursive" Grid.Row="2" Grid.Column="1"
-                    Content="{t:Chk_Recursive}"
+                    Content="{t:Chk_Recursive}" ToolTip="{t:ToolTip_Recursive}"
                     Margin="4,2,4,4" VerticalAlignment="Center"/>
           <CheckBox x:Name="PreserveFolderStructure" Grid.Row="3" Grid.Column="1"
-                    Content="{t:Chk_PreserveStructure}" IsChecked="True"
+                    Content="{t:Chk_PreserveStructure}" IsChecked="True" ToolTip="{t:ToolTip_PreserveStructure}"
                     Margin="4,2,4,4" VerticalAlignment="Center"/>
         </Grid>
       </GroupBox>
@@ -399,20 +399,20 @@
 
         <!-- BGH_COMPLIANCE_START -->
         <!-- ========== 0. Compliance ========== -->
-        <TabItem Header="{t:Tab_Compliance}">
+        <TabItem Header="{t:Tab_Compliance}" ToolTip="{t:ToolTip_TabCompliance}">
           <DockPanel Margin="8">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-              <Button x:Name="ComplianceScan" Content="{t:Btn_ScanCompliance}" Style="{StaticResource AccentButton}"/>
+              <Button x:Name="ComplianceScan" Content="{t:Btn_ScanCompliance}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_ComplianceScan}"/>
               <TextBlock Text="{t:Txt_Extension}" Margin="14,8,4,0"/>
-              <ComboBox x:Name="ComplianceExtFilter" Width="100" VerticalAlignment="Center"/>
+              <ComboBox x:Name="ComplianceExtFilter" Width="100" VerticalAlignment="Center" ToolTip="{t:ToolTip_ComplianceExtFilter}"/>
               <TextBlock x:Name="ComplianceInfo" Margin="14,8,4,4" VerticalAlignment="Center"/>
             </StackPanel>
             <StackPanel DockPanel.Dock="Bottom" Margin="0,8,0,0">
               <WrapPanel HorizontalAlignment="Right">
-                <Button x:Name="ComplianceFixSelected" Content="{t:Btn_FixSelected}" Style="{StaticResource SuccessButton}"/>
+                <Button x:Name="ComplianceFixSelected" Content="{t:Btn_FixSelected}" Style="{StaticResource SuccessButton}" ToolTip="{t:ToolTip_ComplianceFixSelected}"/>
               </WrapPanel>
             </StackPanel>
-            <DataGrid x:Name="ComplianceGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended">
+            <DataGrid x:Name="ComplianceGrid" AutoGenerateColumns="False" IsReadOnly="True" SelectionMode="Extended" ToolTip="{t:ToolTip_ComplianceGrid}">
               <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
                   <Setter Property="ToolTip" Value="{Binding Details}"/>
@@ -440,7 +440,7 @@
         <!-- BGH_COMPLIANCE_END -->
 
         <!-- ========== 1. Profile ========== -->
-        <TabItem Header="{t:Tab_Profile}">
+        <TabItem Header="{t:Tab_Profile}" ToolTip="{t:ToolTip_TabProfile}">
           <Grid Margin="12">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="380"/>
@@ -450,14 +450,14 @@
               <DockPanel>
                 <StackPanel DockPanel.Dock="Bottom">
                   <WrapPanel>
-                    <Button x:Name="ProfileNew"    Content="{t:Btn_New}"/>
-                    <Button x:Name="ProfileLoad"   Content="{t:Btn_Load}"/>
-                    <Button x:Name="ProfileCopy"   Content="{t:Btn_Copy}"/>
-                    <Button x:Name="ProfileDelete" Content="{t:Btn_Delete}"/>
+                    <Button x:Name="ProfileNew"    Content="{t:Btn_New}" ToolTip="{t:ToolTip_ProfileNew}"/>
+                    <Button x:Name="ProfileLoad"   Content="{t:Btn_Load}" ToolTip="{t:ToolTip_ProfileLoad}"/>
+                    <Button x:Name="ProfileCopy"   Content="{t:Btn_Copy}" ToolTip="{t:ToolTip_ProfileCopy}"/>
+                    <Button x:Name="ProfileDelete" Content="{t:Btn_Delete}" ToolTip="{t:ToolTip_ProfileDelete}"/>
                   </WrapPanel>
-                  <Button x:Name="ProfileSave" Content="{t:Btn_Save_Config}" Style="{StaticResource AccentButton}"/>
+                  <Button x:Name="ProfileSave" Content="{t:Btn_Save_Config}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_ProfileSave}"/>
                 </StackPanel>
-                <ListBox x:Name="ProfileList" DisplayMemberPath="Name"/>
+                <ListBox x:Name="ProfileList" DisplayMemberPath="Name" ToolTip="{t:ToolTip_ProfileList}"/>
               </DockPanel>
             </GroupBox>
             <StackPanel Grid.Column="1" Margin="20,0,0,0">
@@ -471,16 +471,16 @@
         </TabItem>
 
         <!-- ========== 2. File analysis ========== -->
-        <TabItem Header="{t:Tab_Analysis}">
+        <TabItem Header="{t:Tab_Analysis}" ToolTip="{t:ToolTip_TabAnalysis}">
           <Grid Margin="8">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto"/>
               <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <WrapPanel>
-              <Button x:Name="Analyze" Content="{t:Btn_Analyze}" Style="{StaticResource AccentButton}"/>
+              <Button x:Name="Analyze" Content="{t:Btn_Analyze}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_Analyze}"/>
               <TextBlock Text="{t:Txt_Extension}" Margin="14,9,0,0"/>
-              <ComboBox x:Name="ExtensionFilter" Width="130"/>
+              <ComboBox x:Name="ExtensionFilter" Width="130" ToolTip="{t:ToolTip_ExtensionFilter}"/>
               <TextBlock Text="{t:Txt_TokenRegex}" Margin="14,9,0,0" Foreground="{DynamicResource TextSecondary}" ToolTip="{t:Tip_TokenRegexLabel}"/>
               <TextBox x:Name="TokenRegex" Width="400" Text="(?&lt;value&gt;[^_\-\s]+)|(?&lt;sep&gt;[_\-\s]+)" ToolTip="{t:Tip_TokenRegex}" FontFamily="Consolas"/>
               <TextBlock x:Name="AnalysisInfo" Margin="14,9,0,0"/>
@@ -491,7 +491,7 @@
                 <ColumnDefinition Width="*"/>
               </Grid.ColumnDefinitions>
               <GroupBox Grid.Column="0" Header="{t:Header_DetectedStructs}">
-                <DataGrid x:Name="PatternGrid" SelectionMode="Single">
+                <DataGrid x:Name="PatternGrid" SelectionMode="Single" ToolTip="{t:ToolTip_PatternGrid}">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="{t:Col_Extension}" Binding="{Binding Extension}" Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Structure}"    Binding="{Binding Display}"   Width="3*"/>
@@ -503,7 +503,7 @@
                 <DockPanel>
                   <TextBlock x:Name="PatternHint" DockPanel.Dock="Bottom" Margin="4"
                              TextWrapping="Wrap" Foreground="{DynamicResource TextSecondary}"/>
-                  <ListBox x:Name="PatternSamples"/>
+                  <ListBox x:Name="PatternSamples" ToolTip="{t:ToolTip_PatternSamples}"/>
                 </DockPanel>
               </GroupBox>
             </Grid>
@@ -511,7 +511,7 @@
         </TabItem>
 
         <!-- ========== 3. Fields and mappings ========== -->
-        <TabItem Header="{t:Tab_Fields}">
+        <TabItem Header="{t:Tab_Fields}" ToolTip="{t:ToolTip_TabFields}">
           <Grid Margin="8">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
@@ -523,7 +523,7 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Bottom" Margin="4" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"
                            Text="{t:Txt_FieldHint}"/>
-                <DataGrid x:Name="FieldGrid" SelectionMode="Single">
+                <DataGrid x:Name="FieldGrid" SelectionMode="Single" ToolTip="{t:ToolTip_FieldGrid}">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="#"        Binding="{Binding DisplayIndex}" Width="30"/>
                     <DataGridTextColumn Header="{t:Col_Sample}" Binding="{Binding Sample}"       Width="*"/>
@@ -542,9 +542,9 @@
               <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="4">
                   <TextBlock Text="{t:Txt_FieldName}" Margin="0,0,0,2"/>
-                  <TextBox x:Name="FieldName"/>
+                  <TextBox x:Name="FieldName" ToolTip="{t:ToolTip_FieldName}"/>
                   <TextBlock Text="{t:Txt_Role}" Margin="0,4,0,2"/>
-                  <ComboBox x:Name="FieldRole">
+                  <ComboBox x:Name="FieldRole" ToolTip="{t:ToolTip_FieldRole}">
                     <ComboBoxItem Content="{t:Role_Value}"/>
                     <ComboBoxItem Content="{t:Role_Date}"/>
                     <ComboBoxItem Content="{t:Role_Id}"/>
@@ -552,10 +552,10 @@
                     <ComboBoxItem Content="{t:Role_Ignore}"/>
                   </ComboBox>
                   <TextBlock Text="{t:Txt_DataType}" Margin="0,4,0,2"/>
-                  <ComboBox x:Name="FieldType" DisplayMemberPath="Label"/>
+                  <ComboBox x:Name="FieldType" DisplayMemberPath="Label" ToolTip="{t:ToolTip_FieldType}"/>
                   <TextBlock Text="{t:Txt_Candidates}" Margin="0,4,0,2"/>
                   <TextBlock x:Name="CandidateInfo" Margin="4,0,4,4" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap"/>
-                  <Button x:Name="FieldApply" Content="{t:Btn_ApplyField}" Margin="4,6,4,4"/>
+                  <Button x:Name="FieldApply" Content="{t:Btn_ApplyField}" Margin="4,6,4,4" ToolTip="{t:ToolTip_FieldApply}"/>
 
                   <Separator Margin="4,8"/>
 
@@ -563,10 +563,10 @@
                   <TextBlock FontWeight="Bold" Text="{t:Header_Transformations}" Margin="0,4,0,4"/>
                   <TextBlock Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" FontSize="11.5"
                              Text="{t:Txt_TransformHint}"/>
-                  <ListBox x:Name="TransformList" DisplayMemberPath="Display" Height="105" Margin="4"/>
+                  <ListBox x:Name="TransformList" DisplayMemberPath="Display" Height="105" Margin="4" ToolTip="{t:ToolTip_TransformList}"/>
                   <WrapPanel>
-                    <Button x:Name="TransformAdd"    Content="{t:Btn_AddTransform}"/>
-                    <Button x:Name="TransformRemove" Content="{t:Btn_Delete}"/>
+                    <Button x:Name="TransformAdd"    Content="{t:Btn_AddTransform}" ToolTip="{t:ToolTip_TransformAdd}"/>
+                    <Button x:Name="TransformRemove" Content="{t:Btn_Delete}" ToolTip="{t:ToolTip_TransformRemove}"/>
                   </WrapPanel>
 
                   <Separator Margin="4,8"/>
@@ -575,13 +575,13 @@
                   <TextBlock FontWeight="Bold" Text="{t:Header_Mappings}" Margin="0,4,0,4"/>
                   <TextBlock Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" FontSize="11.5"
                              Text="{t:Txt_MappingHint}"/>
-                  <ListBox x:Name="MappingList" DisplayMemberPath="Display" Height="105" Margin="4"/>
+                  <ListBox x:Name="MappingList" DisplayMemberPath="Display" Height="105" Margin="4" ToolTip="{t:ToolTip_MappingList}"/>
                   <WrapPanel>
-                    <Button x:Name="MappingAdd"    Content="{t:Btn_AddMapping}"/>
-                    <Button x:Name="MappingEdit"   Content="{t:Btn_Edit}"/>
-                    <Button x:Name="MappingRemove" Content="{t:Btn_Delete}"/>
-                    <Button x:Name="MappingUp"     Content="{t:Btn_Up}"/>
-                    <Button x:Name="MappingDown"   Content="{t:Btn_Down}"/>
+                    <Button x:Name="MappingAdd"    Content="{t:Btn_AddMapping}" ToolTip="{t:ToolTip_MappingAdd}"/>
+                    <Button x:Name="MappingEdit"   Content="{t:Btn_Edit}" ToolTip="{t:ToolTip_MappingEdit}"/>
+                    <Button x:Name="MappingRemove" Content="{t:Btn_Delete}" ToolTip="{t:ToolTip_MappingRemove}"/>
+                    <Button x:Name="MappingUp"     Content="{t:Btn_Up}" ToolTip="{t:ToolTip_MappingUp}"/>
+                    <Button x:Name="MappingDown"   Content="{t:Btn_Down}" ToolTip="{t:ToolTip_MappingDown}"/>
                   </WrapPanel>
                 </StackPanel>
               </ScrollViewer>
@@ -590,7 +590,7 @@
         </TabItem>
 
         <!-- ========== 4. Destination name ========== -->
-        <TabItem Header="{t:Tab_DestName}">
+        <TabItem Header="{t:Tab_DestName}" ToolTip="{t:ToolTip_TabDestName}">
           <Grid Margin="8">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="*"/>
@@ -602,21 +602,21 @@
               <DockPanel>
                 <StackPanel DockPanel.Dock="Bottom">
                   <WrapPanel Margin="0,4,0,0">
-                    <ComboBox x:Name="FieldSelector" Width="240"/>
-                    <Button x:Name="OutputAddField" Content="{t:Btn_AddField}"/>
+                    <ComboBox x:Name="FieldSelector" Width="240" ToolTip="{t:ToolTip_FieldSelector}"/>
+                    <Button x:Name="OutputAddField" Content="{t:Btn_AddField}" ToolTip="{t:ToolTip_OutputAddField}"/>
                   </WrapPanel>
                   <WrapPanel>
-                    <TextBox x:Name="OutputText" Width="240"/>
-                    <Button x:Name="OutputAddText"      Content="{t:Btn_AddText}"/>
-                    <Button x:Name="OutputAddSeparator" Content="{t:Btn_AddSep}"/>
+                    <TextBox x:Name="OutputText" Width="240" ToolTip="{t:ToolTip_OutputText}"/>
+                    <Button x:Name="OutputAddText"      Content="{t:Btn_AddText}" ToolTip="{t:ToolTip_OutputAddText}"/>
+                    <Button x:Name="OutputAddSeparator" Content="{t:Btn_AddSep}" ToolTip="{t:ToolTip_OutputAddSeparator}"/>
                   </WrapPanel>
                   <WrapPanel>
-                    <Button x:Name="OutputUp"     Content="{t:Btn_Up}"/>
-                    <Button x:Name="OutputDown"   Content="{t:Btn_Down}"/>
-                    <Button x:Name="OutputRemove" Content="{t:Btn_RemoveElement}"/>
+                    <Button x:Name="OutputUp"     Content="{t:Btn_Up}" ToolTip="{t:ToolTip_OutputUp}"/>
+                    <Button x:Name="OutputDown"   Content="{t:Btn_Down}" ToolTip="{t:ToolTip_OutputDown}"/>
+                    <Button x:Name="OutputRemove" Content="{t:Btn_RemoveElement}" ToolTip="{t:ToolTip_OutputRemove}"/>
                   </WrapPanel>
                 </StackPanel>
-                <ListBox x:Name="OutputList" DisplayMemberPath="Display"/>
+                <ListBox x:Name="OutputList" DisplayMemberPath="Display" ToolTip="{t:ToolTip_OutputList}"/>
               </DockPanel>
             </GroupBox>
 
@@ -625,11 +625,11 @@
               <StackPanel Margin="4">
                 <WrapPanel>
                   <CheckBox x:Name="KeepExtension" IsChecked="True"
-                            Content="{t:Chk_KeepExt}" Margin="4"/>
+                            Content="{t:Chk_KeepExt}" Margin="4" ToolTip="{t:ToolTip_KeepExtension}"/>
                 </WrapPanel>
                 <WrapPanel>
                   <TextBlock Text="{t:Txt_NewExt}" Margin="10,8,4,0"/>
-                  <TextBox x:Name="NewExtension" Width="120" IsEnabled="False"/>
+                  <TextBox x:Name="NewExtension" Width="120" IsEnabled="False" ToolTip="{t:ToolTip_NewExtension}"/>
                 </WrapPanel>
 
                 <Separator Margin="4,12"/>
@@ -646,12 +646,12 @@
         </TabItem>
 
         <!-- ========== 5. Preview and execution ========== -->
-        <TabItem Header="{t:Tab_Preview}">
+        <TabItem Header="{t:Tab_Preview}" ToolTip="{t:ToolTip_TabPreview}">
           <DockPanel Margin="8">
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-              <Button x:Name="BuildPreview" Content="{t:Btn_BuildPreview}" Style="{StaticResource AccentButton}"/>
-              <CheckBox x:Name="EnforcePattern" Content="{t:Chk_EnforcePattern}" Margin="10,0" VerticalAlignment="Center"/>
-              <ComboBox x:Name="PreviewFilter" Width="150">
+              <Button x:Name="BuildPreview" Content="{t:Btn_BuildPreview}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_BuildPreview}"/>
+              <CheckBox x:Name="EnforcePattern" Content="{t:Chk_EnforcePattern}" Margin="10,0" VerticalAlignment="Center" ToolTip="{t:ToolTip_EnforcePattern}"/>
+              <ComboBox x:Name="PreviewFilter" Width="150" ToolTip="{t:ToolTip_PreviewFilter}">
                 <ComboBoxItem Content="{t:Cbo_All}" IsSelected="True"/>
                 <ComboBoxItem Content="{t:Cbo_Errors}"/>
                 <ComboBoxItem Content="{t:Cbo_Ready}"/>
@@ -662,16 +662,16 @@
               <ProgressBar x:Name="ProgressBar" Height="18" Margin="4" Visibility="Collapsed"/>
               <WrapPanel HorizontalAlignment="Right">
                 <TextBlock Text="{t:Lbl_ExecutionMode}" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                <ComboBox x:Name="ExecutionMode" Width="110" Margin="0,0,8,0">
+                <ComboBox x:Name="ExecutionMode" Width="110" Margin="0,0,8,0" ToolTip="{t:ToolTip_ExecutionMode}">
                   <ComboBoxItem Content="{t:Action_Copy}" IsSelected="True"/>
                   <ComboBoxItem Content="{t:Action_Move}"/>
                 </ComboBox>
-                <Button x:Name="ExportAudit" Content="{t:Btn_Export}"/>
-                <Button x:Name="OpenLog"     Content="{t:Btn_OpenLog}"/>
-                <Button x:Name="Execute"     Content="{t:Btn_Execute}" Style="{StaticResource SuccessButton}"/>
+                <Button x:Name="ExportAudit" Content="{t:Btn_Export}" ToolTip="{t:ToolTip_ExportAudit}"/>
+                <Button x:Name="OpenLog"     Content="{t:Btn_OpenLog}" ToolTip="{t:ToolTip_OpenLog}"/>
+                <Button x:Name="Execute"     Content="{t:Btn_Execute}" Style="{StaticResource SuccessButton}" ToolTip="{t:ToolTip_Execute}"/>
               </WrapPanel>
             </StackPanel>
-            <DataGrid x:Name="PreviewGrid">
+            <DataGrid x:Name="PreviewGrid" ToolTip="{t:ToolTip_PreviewGrid}">
               <DataGrid.RowStyle>
                 <Style TargetType="DataGridRow">
                   <Setter Property="ToolTip" Value="{Binding Details}"/>
@@ -696,7 +696,7 @@
         </TabItem>
 
         <!-- ========== 6. Custom Rules ========== -->
-        <TabItem Header="{t:Tab_CustomRules}">
+        <TabItem Header="{t:Tab_CustomRules}" ToolTip="{t:ToolTip_TabCustomRules}">
           <Grid Margin="8">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="3*"/>
@@ -708,12 +708,12 @@
               <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Margin="4,2,4,6" Foreground="{DynamicResource TextSecondary}" TextWrapping="Wrap" Text="{t:Txt_CustomRulesHint}"/>
                 <WrapPanel DockPanel.Dock="Bottom" Margin="0,4,0,0">
-                  <Button x:Name="CustomRuleNew" Content="{t:Btn_NewRule}"/>
-                  <Button x:Name="CustomRuleDelete" Content="{t:Btn_Delete}"/>
-                  <Button x:Name="CustomRuleSaveConfig" Content="{t:Btn_Save_Config}" Style="{StaticResource AccentButton}"/>
-                  <Button x:Name="OpenCustomRulesDoc" Content="{t:Btn_OpenRulesDoc}"/>
+                  <Button x:Name="CustomRuleNew" Content="{t:Btn_NewRule}" ToolTip="{t:ToolTip_CustomRuleNew}"/>
+                  <Button x:Name="CustomRuleDelete" Content="{t:Btn_Delete}" ToolTip="{t:ToolTip_CustomRuleDelete}"/>
+                  <Button x:Name="CustomRuleSaveConfig" Content="{t:Btn_Save_Config}" Style="{StaticResource AccentButton}" ToolTip="{t:ToolTip_CustomRuleSaveConfig}"/>
+                  <Button x:Name="OpenCustomRulesDoc" Content="{t:Btn_OpenRulesDoc}" ToolTip="{t:ToolTip_OpenCustomRulesDoc}"/>
                 </WrapPanel>
-                <DataGrid x:Name="CustomRulesGrid" SelectionMode="Single">
+                <DataGrid x:Name="CustomRulesGrid" SelectionMode="Single" ToolTip="{t:ToolTip_CustomRulesGrid}">
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="110"/>
                     <DataGridTextColumn Header="{t:Col_DisplayName}" Binding="{Binding DisplayName}" Width="130"/>
@@ -730,26 +730,26 @@
               <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel Margin="6">
                   <TextBlock Text="Rule ID:" Margin="0,2,0,2" FontWeight="SemiBold"/>
-                  <TextBox x:Name="CustomRuleId"/>
+                  <TextBox x:Name="CustomRuleId" ToolTip="{t:ToolTip_CustomRuleId}"/>
 
                   <TextBlock Text="{t:Col_DisplayName}:" Margin="0,6,0,2" FontWeight="SemiBold"/>
-                  <TextBox x:Name="CustomRuleDisplayName"/>
+                  <TextBox x:Name="CustomRuleDisplayName" ToolTip="{t:ToolTip_CustomRuleDisplayName}"/>
 
                   <TextBlock Text="Regex Pattern:" Margin="0,6,0,2" FontWeight="SemiBold"/>
-                  <TextBox x:Name="CustomRulePattern" FontFamily="Consolas"/>
+                  <TextBox x:Name="CustomRulePattern" FontFamily="Consolas" ToolTip="{t:ToolTip_CustomRulePattern}"/>
 
-                  <CheckBox x:Name="CustomRuleEnabled" Content="{t:Col_Enabled}" IsChecked="True" Margin="4,8,4,4"/>
-                  <CheckBox x:Name="CustomRuleAllowComposite" Content="{t:Col_AllowComposite}" Margin="4,2,4,8"/>
+                  <CheckBox x:Name="CustomRuleEnabled" Content="{t:Col_Enabled}" IsChecked="True" Margin="4,8,4,4" ToolTip="{t:ToolTip_CustomRuleEnabled}"/>
+                  <CheckBox x:Name="CustomRuleAllowComposite" Content="{t:Col_AllowComposite}" Margin="4,2,4,8" ToolTip="{t:ToolTip_CustomRuleAllowComposite}"/>
 
-                  <Button x:Name="CustomRuleApply" Content="{t:Btn_ApplyRule}" Margin="0,6,0,8"/>
+                  <Button x:Name="CustomRuleApply" Content="{t:Btn_ApplyRule}" Margin="0,6,0,8" ToolTip="{t:ToolTip_CustomRuleApply}"/>
 
                   <Separator Margin="0,8"/>
 
                   <!-- Interactive Live Regex Testing Section -->
                   <TextBlock Text="{t:Header_TestCustomRule}" FontWeight="Bold" Margin="0,4,0,4"/>
                   <TextBlock Text="{t:Txt_TestSampleInput}" Margin="0,2,0,2"/>
-                  <TextBox x:Name="CustomRuleTestInput" Text="Report_2026-01-16"/>
-                  <Button x:Name="CustomRuleTestBtn" Content="{t:Btn_TestRule}" Margin="0,6,0,6"/>
+                  <TextBox x:Name="CustomRuleTestInput" Text="Report_2026-01-16" ToolTip="{t:ToolTip_CustomRuleTestInput}"/>
+                  <Button x:Name="CustomRuleTestBtn" Content="{t:Btn_TestRule}" Margin="0,6,0,6" ToolTip="{t:ToolTip_CustomRuleTestBtn}"/>
 
                   <Border Background="{DynamicResource BgControl}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="8" CornerRadius="4" Margin="0,4,0,0">
                     <TextBlock x:Name="CustomRuleTestResult" TextWrapping="Wrap" FontFamily="Consolas" FontSize="12"/>

@@ -1,6 +1,16 @@
 ﻿# Transforms.ps1 — Transform engine and dialog for adding per-field transformations.
 # Dot-sourced by the main script; operates in $script: scope.
 
+<#
+.SYNOPSIS
+    Transliterates diacritics and accented characters from European languages into clean ASCII characters.
+
+.PARAMETER inputString
+    The input string containing accented or diacritic characters.
+
+.OUTPUTS
+    [String] Transliterated ASCII string.
+#>
 function ConvertTo-FNTAscii([string]$inputString) {
     if ([string]::IsNullOrEmpty($inputString)) { return '' }
 
@@ -41,6 +51,24 @@ function ConvertTo-FNTAscii([string]$inputString) {
     return $cleanSb.ToString().Normalize([System.Text.NormalizationForm]::FormC)
 }
 
+<#
+.SYNOPSIS
+    Applies a chain of transformation operations to a single field value.
+
+.DESCRIPTION
+    Executes operations sequentially on an input value token. Supports Substring, DateFormat, Replace,
+    Transliterate, RegexReplace, Expression (PowerShell script), Sequence (counter), Case adjustments,
+    Padding, and Math operations.
+
+.PARAMETER value
+    The initial string value of the field.
+
+.PARAMETER transforms
+    Collection of transformation rule objects configured for this field.
+
+.OUTPUTS
+    [String] Transformed field value.
+#>
 function ApplyTransforms([string]$value, $transforms) {
     foreach ($t in $transforms) {
         try {
@@ -49,7 +77,7 @@ function ApplyTransforms([string]$value, $transforms) {
                     $start = [int]$t.Start
                     $len = [int]$t.Length
                     if ($start -ge $value.Length) {
-                        throw "Pozycja $start przekracza długość tekstu ($($value.Length))."
+                        throw ((T 'Err_SubstringStartExceeds') -f $start, $value.Length)
                     }
                     $len = [Math]::Min($len, $value.Length - $start)
                     $value = $value.Substring($start, $len)
@@ -132,6 +160,13 @@ function ApplyTransforms([string]$value, $transforms) {
     return $value
 }
 
+<#
+.SYNOPSIS
+    Displays a Windows Forms dialog for defining a new field transformation.
+
+.PARAMETER field
+    The target field object to attach the new transformation rule to.
+#>
 function ShowTransformDialog($field) {
     $form = New-Object Windows.Forms.Form
     $form.Text = (T 'Title_AddTransform')

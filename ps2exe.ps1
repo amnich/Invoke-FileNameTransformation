@@ -1,27 +1,39 @@
 <#
 .SYNOPSIS
-        Builds a signed File Name Transformer executable with ps2exe.
+    Compiles and signs a standalone, self-contained executable for File Name Transformer using ps2exe.
 
 .DESCRIPTION
-        Embeds the core module, WPF XAML, translation files, and source scripts into a temporary PowerShell
-        file, signs it, and compiles it as an STA executable. The executable therefore does not require the
-        development source files at runtime.
+    The ps2exe packaging script embeds all application assets—including the core module (FileNameTransformation.Core.psm1),
+    WPF interface definition (MainWindow.xaml encoded in Base64), locale translation dictionaries (en.json, pl.json, de.json),
+    and all src/ helper modules—into a single self-contained PowerShell script payload.
+
+    It signs the temporary script using an available Code Signing certificate, compiles it into a native STA Windows GUI executable
+    via ps2exe (with icon integration), and performs secondary dual SHA-256 Authenticode signing on the resulting EXE binary via signtool.exe.
 
 .PARAMETER DebugBuild
-        Creates Invoke-FileNameTransformation.debug.exe with a console and ps2exe debug support. Without this
-        switch, creates Invoke-FileNameTransformation.exe without a console.
+    When specified, creates Invoke-FileNameTransformation.debug.exe with a visible console window and ps2exe debug flags enabled.
+    By default (without this switch), builds a production GUI binary (Invoke-FileNameTransformation.exe) with no console window.
 
 .EXAMPLE
-        .\ps2exe.ps1
-        Builds and signs the production executable.
+    .\ps2exe.ps1
+    Compiles, embeds assets, and signs the production executable (Invoke-FileNameTransformation.exe).
 
 .EXAMPLE
-        .\ps2exe.ps1 -DebugBuild
-        Builds and signs a debug executable with a visible console.
+    .\ps2exe.ps1 -DebugBuild
+    Compiles a debug executable with console logging support (Invoke-FileNameTransformation.debug.exe).
+
+.INPUTS
+    None. Reads files from the local directory (Invoke-FileNameTransformation.ps1, MainWindow.xaml, locales/*.json, src/*.ps1).
+
+.OUTPUTS
+    [System.IO.FileInfo] Compiled EXE binary (Invoke-FileNameTransformation.exe or .debug.exe).
 
 .NOTES
-        Requires the ps2exe module, a suitable code-signing certificate for the current user, signtool.exe,
-        and the configured BGH icon file. The generated executable is signed during this process.
+    Build Requirements:
+    - Installed 'ps2exe' PowerShell module (`Install-Module ps2exe`).
+    - Valid Code Signing certificate in Cert:\CurrentUser\My (optional, gracefully skipped with warning if absent).
+    - Windows SDK `signtool.exe` for Authenticode binary timestamping (optional).
+    - Application icon file specified in iconFile parameter.
 #>
 
 [CmdletBinding()]

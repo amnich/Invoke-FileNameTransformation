@@ -42,7 +42,7 @@ if ($ComplianceScan -and $ComplianceFixSelected -and $ComplianceExtFilter) {
             catch { ErrorBox (T 'Err_Compliance') $_ }
         })
     $ComplianceExtFilter.Add_SelectionChanged({
-                try { Invoke-ComplianceScan } catch {}
+            try { Invoke-ComplianceScan } catch {}
         })
 }
 
@@ -401,120 +401,120 @@ if ($CustomRulesGrid) {
     RefreshCustomRulesGrid
 
     $CustomRulesGrid.Add_SelectionChanged({
-        $rule = $CustomRulesGrid.SelectedItem
-        if ($rule) {
-            $CustomRuleId.Text = [string]$rule.Id
-            $CustomRuleDisplayName.Text = [string]$rule.DisplayName
-            $CustomRulePattern.Text = [string]$rule.Pattern
-            $CustomRuleEnabled.IsChecked = [bool]$rule.Enabled
-            $CustomRuleAllowComposite.IsChecked = [bool]$rule.AllowComposite
-        }
-    })
+            $rule = $CustomRulesGrid.SelectedItem
+            if ($rule) {
+                $CustomRuleId.Text = [string]$rule.Id
+                $CustomRuleDisplayName.Text = [string]$rule.DisplayName
+                $CustomRulePattern.Text = [string]$rule.Pattern
+                $CustomRuleEnabled.IsChecked = [bool]$rule.Enabled
+                $CustomRuleAllowComposite.IsChecked = [bool]$rule.AllowComposite
+            }
+        })
 
     if ($CustomRuleNew) {
         $CustomRuleNew.Add_Click({
-            $CustomRuleId.Text = "CustomRule$($script:CustomTypeRules.Count + 1)"
-            $CustomRuleDisplayName.Text = "New Custom Rule"
-            $CustomRulePattern.Text = "^[A-Z]{3}-\d{3}$"
-            $CustomRuleEnabled.IsChecked = $true
-            $CustomRuleAllowComposite.IsChecked = $false
-        })
+                $CustomRuleId.Text = "CustomRule$($script:CustomTypeRules.Count + 1)"
+                $CustomRuleDisplayName.Text = "New Custom Rule"
+                $CustomRulePattern.Text = "^[A-Z]{3}-\d{3}$"
+                $CustomRuleEnabled.IsChecked = $true
+                $CustomRuleAllowComposite.IsChecked = $false
+            })
     }
 
     if ($CustomRuleApply) {
         $CustomRuleApply.Add_Click({
-            try {
-                $id = $CustomRuleId.Text.Trim()
-                $displayName = $CustomRuleDisplayName.Text.Trim()
-                $pattern = $CustomRulePattern.Text.Trim()
-                $enabled = [bool]$CustomRuleEnabled.IsChecked
-                $allowComposite = [bool]$CustomRuleAllowComposite.IsChecked
+                try {
+                    $id = $CustomRuleId.Text.Trim()
+                    $displayName = $CustomRuleDisplayName.Text.Trim()
+                    $pattern = $CustomRulePattern.Text.Trim()
+                    $enabled = [bool]$CustomRuleEnabled.IsChecked
+                    $allowComposite = [bool]$CustomRuleAllowComposite.IsChecked
 
-                if (-not $id -or -not $pattern) {
-                    throw "Rule ID and Pattern must not be empty."
-                }
-                [void][regex]::new($pattern)
-
-                $existing = @($script:CustomTypeRules | Where-Object { $_.Id -eq $id })[0]
-                if ($existing) {
-                    $existing.DisplayName = $displayName
-                    $existing.Pattern = $pattern
-                    $existing.Enabled = $enabled
-                    $existing.AllowComposite = $allowComposite
-                }
-                else {
-                    $newRule = [pscustomobject][ordered]@{
-                        Id             = $id
-                        DisplayName    = $displayName
-                        Pattern        = $pattern
-                        Enabled        = $enabled
-                        AllowComposite = $allowComposite
+                    if (-not $id -or -not $pattern) {
+                        throw (T 'Err_EmptyRuleOrPattern')
                     }
-                    $script:CustomTypeRules += $newRule
+                    [void][regex]::new($pattern)
+
+                    $existing = @($script:CustomTypeRules | Where-Object { $_.Id -eq $id })[0]
+                    if ($existing) {
+                        $existing.DisplayName = $displayName
+                        $existing.Pattern = $pattern
+                        $existing.Enabled = $enabled
+                        $existing.AllowComposite = $allowComposite
+                    }
+                    else {
+                        $newRule = [pscustomobject][ordered]@{
+                            Id             = $id
+                            DisplayName    = $displayName
+                            Pattern        = $pattern
+                            Enabled        = $enabled
+                            AllowComposite = $allowComposite
+                        }
+                        $script:CustomTypeRules += $newRule
+                    }
+                    RefreshCustomRulesGrid
+                    SetStatus "Updated custom rule '$id'."
                 }
-                RefreshCustomRulesGrid
-                SetStatus "Updated custom rule '$id'."
-            }
-            catch { ErrorBox "Custom Rule Error" $_ }
-        })
+                catch { ErrorBox "Custom Rule Error" $_ }
+            })
     }
 
     if ($CustomRuleDelete) {
         $CustomRuleDelete.Add_Click({
-            try {
-                $rule = $CustomRulesGrid.SelectedItem
-                if ($rule) {
-                    $script:CustomTypeRules = @($script:CustomTypeRules | Where-Object { $_.Id -ne $rule.Id })
-                    RefreshCustomRulesGrid
-                    SetStatus "Deleted custom rule '$($rule.Id)'."
+                try {
+                    $rule = $CustomRulesGrid.SelectedItem
+                    if ($rule) {
+                        $script:CustomTypeRules = @($script:CustomTypeRules | Where-Object { $_.Id -ne $rule.Id })
+                        RefreshCustomRulesGrid
+                        SetStatus "Deleted custom rule '$($rule.Id)'."
+                    }
                 }
-            }
-            catch { ErrorBox "Custom Rule Error" $_ }
-        })
+                catch { ErrorBox "Custom Rule Error" $_ }
+            })
     }
 
     if ($CustomRuleSaveConfig) {
         $CustomRuleSaveConfig.Add_Click({
-            try {
-                $script:Config.CustomTypeRules = @($script:CustomTypeRules)
-                $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
-                SetStatus "Saved custom rules configuration to $script:ConfigPath."
-            }
-            catch { ErrorBox "Config Save Error" $_ }
-        })
+                try {
+                    $script:Config.CustomTypeRules = @($script:CustomTypeRules)
+                    $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
+                    SetStatus "Saved custom rules configuration to $script:ConfigPath."
+                }
+                catch { ErrorBox "Config Save Error" $_ }
+            })
     }
 
     if ($CustomRuleTestBtn) {
         $CustomRuleTestBtn.Add_Click({
-            try {
-                $testVal = $CustomRuleTestInput.Text
-                $candidates = Get-FNTTypeCandidates -Value $testVal -CustomTypeRules @($script:CustomTypeRules)
-                if ($candidates.Count -eq 0) {
-                    $CustomRuleTestResult.Text = "Input: '$testVal'`nResult: NO MATCH"
+                try {
+                    $testVal = $CustomRuleTestInput.Text
+                    $candidates = Get-FNTTypeCandidates -Value $testVal -CustomTypeRules @($script:CustomTypeRules)
+                    if ($candidates.Count -eq 0) {
+                        $CustomRuleTestResult.Text = "Input: '$testVal'`nResult: NO MATCH"
+                    }
+                    else {
+                        $details = ($candidates | ForEach-Object { "$($_.TypeId) [Display: $($_.DisplayName), Composite: $($_.AllowComposite)]" }) -join "`n  "
+                        $CustomRuleTestResult.Text = "Input: '$testVal'`nMatched Candidates ($($candidates.Count)):`n  $details"
+                    }
                 }
-                else {
-                    $details = ($candidates | ForEach-Object { "$($_.TypeId) [Display: $($_.DisplayName), Composite: $($_.AllowComposite)]" }) -join "`n  "
-                    $CustomRuleTestResult.Text = "Input: '$testVal'`nMatched Candidates ($($candidates.Count)):`n  $details"
+                catch {
+                    $CustomRuleTestResult.Text = "Test Error: $($_.Exception.Message)"
                 }
-            }
-            catch {
-                $CustomRuleTestResult.Text = "Test Error: $($_.Exception.Message)"
-            }
-        })
+            })
     }
 
     if ($OpenCustomRulesDoc) {
         $OpenCustomRulesDoc.Add_Click({
-            try {
-                $docPath = Join-Path $script:ScriptRoot 'CUSTOM_TYPE_RULES.md'
-                if (Test-Path -LiteralPath $docPath) {
-                    [System.Diagnostics.Process]::Start($docPath) | Out-Null
+                try {
+                    $docPath = Join-Path $script:ScriptRoot 'CUSTOM_TYPE_RULES.md'
+                    if (Test-Path -LiteralPath $docPath) {
+                        [System.Diagnostics.Process]::Start($docPath) | Out-Null
+                    }
+                    else {
+                        throw ((T 'Err_FileNotFound') -f $docPath)
+                    }
                 }
-                else {
-                    throw "File not found: $docPath"
-                }
-            }
-            catch { ErrorBox "Guide Error" $_ }
-        })
+                catch { ErrorBox "Guide Error" $_ }
+            })
     }
 }

@@ -1,4 +1,4 @@
-﻿# Compliance.ps1 — Naming convention compliance scanner, fixer, and metadata integration.
+# Compliance.ps1 — Naming convention compliance scanner, fixer, and metadata integration.
 # Dot-sourced by the main script; operates in $script: scope.
 
 $script:ComplianceRows = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
@@ -74,27 +74,29 @@ function ScanCompliance {
 
         $violationsText = if ($res.Violations) {
             (@($res.Violations | ForEach-Object { T $_ }) -join '; ')
-        } else { '' }
+        }
+        else { '' }
 
         $suggestedName = if (-not $res.IsCompliant) {
             BuildComplianceSuggestion $file $res $meta
-        } else { $file.Name }
+        }
+        else { $file.Name }
 
         if ($res.IsCompliant) { $okCount++ } else { $failCount++ }
 
         $row = [pscustomobject]@{
-            File           = $file
-            FileName       = $file.Name
-            FullName       = $file.FullName
-            IsCompliant    = $res.IsCompliant
-            StatusCode     = if ($res.IsCompliant) { 'Ready' } else { 'Error' }
-            StatusText     = if ($res.IsCompliant) { T 'Compliance_OK' } else { T 'Compliance_Fail' }
-            MetaDate       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { T 'Compliance_MetaUnavailable' }
-            MetaAuthor     = if ($meta.Author) { $meta.Author } else { T 'Compliance_MetaUnavailable' }
-            AuthorSegment  = $meta.AuthorSegment
-            ViolationText  = $violationsText
-            SuggestedName  = $suggestedName
-            Details        = "Path: $($file.FullName); Violations: $violationsText"
+            File          = $file
+            FileName      = $file.Name
+            FullName      = $file.FullName
+            IsCompliant   = $res.IsCompliant
+            StatusCode    = if ($res.IsCompliant) { 'Ready' } else { 'Error' }
+            StatusText    = if ($res.IsCompliant) { T 'Compliance_OK' } else { T 'Compliance_Fail' }
+            MetaDate      = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { T 'Compliance_MetaUnavailable' }
+            MetaAuthor    = if ($meta.Author) { $meta.Author } else { T 'Compliance_MetaUnavailable' }
+            AuthorSegment = $meta.AuthorSegment
+            ViolationText = $violationsText
+            SuggestedName = $suggestedName
+            Details       = "Path: $($file.FullName); Violations: $violationsText"
         }
 
         $script:ComplianceRows.Add($row)
@@ -118,12 +120,7 @@ function ApplyComplianceFix {
     if (-not $itemsToRename -or $itemsToRename.Count -eq 0) { return }
 
     $count = $itemsToRename.Count
-    $msgTemplate = T 'Msg_ConfirmRenameInPlace'
-    $confirmMsg = if ($msgTemplate -and $msgTemplate -ne 'Msg_ConfirmRenameInPlace') {
-        $msgTemplate -f $count
-    } else {
-        "Zmienić nazwy $count plików w miejscu na sugerowane nazwy?"
-    }
+    $confirmMsg = (T 'Msg_ConfirmRenameInPlace') -f $count
 
     $confirm = [Windows.MessageBox]::Show(
         $confirmMsg,
@@ -147,17 +144,16 @@ function ApplyComplianceFix {
         }
     }
 
-    $statusTemplate = T 'Status_RenamedCount'
-    $statusMsg = if ($statusTemplate -and $statusTemplate -ne 'Status_RenamedCount') {
-        $statusTemplate -f $fixed
-    } else {
-        "Zmieniono nazwy $fixed plików w miejscu."
-    }
+    $statusMsg = (T 'Status_RenamedCount') -f $fixed
 
     SetStatus $statusMsg
     ScanCompliance
 }
 
+<#
+.SYNOPSIS
+    Registers virtual metadata fields (File Date, File Author, EXIF tags, Hashes) into the available field list.
+#>
 function InjectMetadataVirtualFields {
     EnsureVirtualField (T 'Name_MetaDate')
     EnsureVirtualField (T 'Name_MetaAuthor')

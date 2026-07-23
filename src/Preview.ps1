@@ -1,6 +1,19 @@
-# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
+﻿# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
 # Dot-sourced by the main script; operates in $script: scope.
 
+<#
+.SYNOPSIS
+    Reads data records from CSV, TXT, JSON, or XML lookup files into standard object collections.
+
+.PARAMETER path
+    Path to the dictionary data file.
+
+.PARAMETER delimiter
+    Delimiter character if reading CSV/TXT files.
+
+.OUTPUTS
+    [PSCustomObject[]] Array of data record objects.
+#>
 function Read-FNTDictionaryData([string]$path, [string]$delimiter) {
     if (-not (Test-Path -LiteralPath $path -PathType Leaf)) { return @() }
     $ext = [System.IO.Path]::GetExtension($path).ToLowerInvariant()
@@ -35,6 +48,10 @@ function Read-FNTDictionaryData([string]$path, [string]$delimiter) {
     return @(Import-Csv -LiteralPath $path -Delimiter $delimiter)
 }
 
+<#
+.SYNOPSIS
+    Refreshes the dropdown list of available field names in Tab 4.
+#>
 function RefreshFieldSelector {
     $names = @($script:Fields | ForEach-Object { $_.Name })
     $prev = $FieldSelector.SelectedItem
@@ -44,6 +61,10 @@ function RefreshFieldSelector {
     }
 }
 
+<#
+.SYNOPSIS
+    Updates the live sample output string box in Tab 4 using the first file in the active pattern group.
+#>
 function UpdateOutputExample {
     if (-not $script:OutputParts.Count) {
         $OutputExample.Text = (T 'Hint_AddElements')
