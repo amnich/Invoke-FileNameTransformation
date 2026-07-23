@@ -526,6 +526,21 @@ Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
         }
     }
 
+    It 'skips hash calculation when requested' {
+        $testFile = [System.IO.Path]::GetTempFileName()
+        try {
+            Set-Content -LiteralPath $testFile -Value 'Test Content' -Encoding UTF8
+            $meta = Get-FNTFileMetadata -Path $testFile -SkipHashes
+
+            $meta.CreationDateStr | Should -Not -BeNullOrEmpty
+            $meta.HashMD5 | Should -BeNullOrEmpty
+            $meta.HashSHA256 | Should -BeNullOrEmpty
+        }
+        finally {
+            Remove-Item $testFile -ErrorAction SilentlyContinue
+        }
+    }
+
     It 'reads dictionary headers from JSON file' {
         $jsonFile = [System.IO.Path]::GetTempFileName() + '.json'
         try {

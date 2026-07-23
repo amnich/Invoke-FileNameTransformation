@@ -983,7 +983,8 @@ function ConvertTo-FNTProfile {
 function Get-FNTFileMetadata {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$Path
+        [Parameter(Mandatory)][string]$Path,
+        [switch]$SkipHashes
     )
 
     $result = [ordered]@{
@@ -1019,25 +1020,26 @@ function Get-FNTFileMetadata {
             $result.LastModified = $fi.LastWriteTime
             $result.LastModifiedStr = $fi.LastWriteTime.ToString('yyyyMMdd')
 
-            # Calculate content hashes
-            try {
-                $md5 = [System.Security.Cryptography.MD5]::Create()
-                $sha256 = [System.Security.Cryptography.SHA256]::Create()
-                $stream = [System.IO.File]::OpenRead($Path)
+            if (-not $SkipHashes) {
                 try {
-                    $md5Bytes = $md5.ComputeHash($stream)
-                    $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
-                    [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
-                    $shaBytes = $sha256.ComputeHash($stream)
-                    $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
+                    $md5 = [System.Security.Cryptography.MD5]::Create()
+                    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+                    $stream = [System.IO.File]::OpenRead($Path)
+                    try {
+                        $md5Bytes = $md5.ComputeHash($stream)
+                        $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
+                        [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
+                        $shaBytes = $sha256.ComputeHash($stream)
+                        $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
+                    }
+                    finally {
+                        $stream.Dispose()
+                        $md5.Dispose()
+                        $sha256.Dispose()
+                    }
                 }
-                finally {
-                    $stream.Dispose()
-                    $md5.Dispose()
-                    $sha256.Dispose()
-                }
+                catch {}
             }
-            catch {}
         }
         catch {}
 

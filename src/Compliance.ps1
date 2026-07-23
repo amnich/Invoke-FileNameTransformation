@@ -69,8 +69,15 @@ function ScanCompliance {
     $failCount = 0
 
     foreach ($file in $filteredFiles) {
-        $meta = Get-FNTFileMetadata -Path $file.FullName
         $res = Test-FNTNamingConvention -BaseName $file.BaseName
+        $meta = [pscustomobject]@{
+            CreationDateStr = $file.CreationTime.ToString('yyyyMMdd')
+            Author          = ''
+            AuthorSegment   = ''
+        }
+        if (-not $res.IsCompliant) {
+            $meta = Get-FNTFileMetadata -Path $file.FullName -SkipHashes
+        }
 
         $violationsText = if ($res.Violations) {
             (@($res.Violations | ForEach-Object { T $_ }) -join '; ')
