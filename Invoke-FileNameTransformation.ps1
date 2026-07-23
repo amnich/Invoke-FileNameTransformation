@@ -186,6 +186,7 @@ $script:Fields = New-Object 'System.Collections.ObjectModel.ObservableCollection
 $script:Mappings = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
 $script:OutputParts = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
 $script:PreviewRows = New-Object 'System.Collections.ObjectModel.ObservableCollection[object]'
+$script:MetadataCache = @{}
 $script:CurrentProfileName = ''
 $script:CurrentPattern = $null
 #endregion

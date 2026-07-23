@@ -556,3 +556,38 @@ Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
         }
     }
 }
+
+Describe 'Metadata field applicability' {
+    BeforeAll {
+        function global:T([string]$Key) { $Key }
+        . (Join-Path $PSScriptRoot '..\src\Preview.ps1')
+    }
+
+    It 'does not offer audio, image, or document fields for text files' {
+        $fields = Get-FNTApplicableMetadataFields -Files @([pscustomobject]@{ Extension = '.txt' })
+
+        $fields | Should -Contain 'Name_MetaDate'
+        $fields | Should -Contain 'Name_MetaHashMD5'
+        $fields | Should -Not -Contain 'Name_MetaAudioArtist'
+        $fields | Should -Not -Contain 'Name_MetaDateTaken'
+        $fields | Should -Not -Contain 'Name_MetaDocCreator'
+    }
+
+    It 'offers image metadata fields for image files only' {
+        $fields = Get-FNTApplicableMetadataFields -Files @([pscustomobject]@{ Extension = '.jpg' })
+
+        $fields | Should -Contain 'Name_MetaDateTaken'
+        $fields | Should -Contain 'Name_MetaDimensions'
+        $fields | Should -Contain 'Name_MetaCamera'
+        $fields | Should -Not -Contain 'Name_MetaAudioArtist'
+    }
+
+    It 'offers document creator only for OpenXML documents' {
+        $fields = Get-FNTApplicableMetadataFields -Files @([pscustomobject]@{ Extension = '.docx' })
+
+        $fields | Should -Contain 'Name_MetaAuthor'
+        $fields | Should -Contain 'Name_MetaTitle'
+        $fields | Should -Contain 'Name_MetaDocCreator'
+        $fields | Should -Not -Contain 'Name_MetaAudioArtist'
+    }
+}

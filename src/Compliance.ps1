@@ -154,15 +154,8 @@ function ApplyComplianceFix {
 .SYNOPSIS
     Registers virtual metadata fields (File Date, File Author, EXIF tags, Hashes) into the available field list.
 #>
-function InjectMetadataVirtualFields {
-    EnsureVirtualField (T 'Name_MetaDate')
-    EnsureVirtualField (T 'Name_MetaAuthor')
-    EnsureVirtualField (T 'Name_MetaTitle')
-    EnsureVirtualField (T 'Name_MetaDateTaken')
-    EnsureVirtualField (T 'Name_MetaDimensions')
-    EnsureVirtualField (T 'Name_MetaCamera')
-    EnsureVirtualField (T 'Name_MetaAudioArtist')
-    EnsureVirtualField (T 'Name_MetaDocCreator')
-    EnsureVirtualField (T 'Name_MetaHashMD5')
-    EnsureVirtualField (T 'Name_MetaHashSHA256')
+function InjectMetadataVirtualFields($Files) {
+    foreach ($name in Get-FNTApplicableMetadataFields -Files $Files) {
+        EnsureVirtualField $name
+    }
 }

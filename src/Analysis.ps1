@@ -63,6 +63,7 @@ function AnalyzePatterns {
         @(Get-ChildItem -LiteralPath $src -File)
     }
     if (-not $files) { throw (T 'Err_NoFiles') }
+    $script:MetadataCache.Clear()
 
     # Populate extension filter
     $extensions = @($files | ForEach-Object { $_.Extension.ToLower() } | Sort-Object -Unique)
@@ -198,7 +199,7 @@ function SetPattern($pattern) {
     foreach ($m in $script:Mappings) {
         EnsureVirtualField $m.OutputField
     }
-    InjectMetadataVirtualFields
+    InjectMetadataVirtualFields -Files @($pattern.Items | ForEach-Object { $_.File })
 
     $FieldGrid.ItemsSource = $script:Fields
     RefreshFieldSelector

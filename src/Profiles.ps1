@@ -73,6 +73,10 @@ function LoadProfile([string]$path) {
         }
         $_.Transforms = $transforms
 
+        if (-not $_.PSObject.Properties['Preview']) {
+            $_ | Add-Member -NotePropertyName 'Preview' -NotePropertyValue '' -Force
+        }
+
         if (-not $_.PSObject.Properties['Source']) {
             $src = if ($_.IsVirtual) { (T 'Src_Mapping') } else { (T 'Src_Name') }
             $_ | Add-Member -NotePropertyName 'Source' -NotePropertyValue $src -Force

@@ -1,6 +1,7 @@
 ﻿Set-StrictMode -Version 2.0
 
 $script:InvariantCulture = [Globalization.CultureInfo]::InvariantCulture
+$script:ShellMetadataHeaderIndexes = @{}
 $script:DateFormats = @(
     'yyyyMMdd',
     'yyyy-MM-dd', 'yyyy.MM.dd', 'yyyy_MM_dd',
@@ -1049,15 +1050,49 @@ function Get-FNTFileMetadata {
             if ($folder) {
                 $item = $folder.ParseName($leaf)
                 if ($item) {
-                    $author = $folder.GetDetailsOf($item, 20)
-                    $title  = $folder.GetDetailsOf($item, 21)
+                    $propertyAliases = @{
+                        Author = @('author', 'authors', 'autor', 'autoren', 'autorzy')
+                        Title  = @('title', 'titel', 'tytul')
+                        Artist = @('contributingartists', 'artists', 'interpretingartists', 'mitwirkendeinterpreten', 'wykonawcy')
+                        Album  = @('album')
+                        Year   = @('year', 'jahr', 'rok')
+                    }
+                    $shellValues = @{}
+                    $folderKey = $parent.ToLowerInvariant()
+                    if ($script:ShellMetadataHeaderIndexes.ContainsKey($folderKey)) {
+                        $headerIndexes = $script:ShellMetadataHeaderIndexes[$folderKey]
+                    }
+                    else {
+                        $headerIndexes = @{}
+                        foreach ($index in 0..400) {
+                            $header = [string]$folder.GetDetailsOf($folder.Items, $index)
+                            if ([string]::IsNullOrWhiteSpace($header)) { continue }
+                            $normalizedHeader = ($header.ToLowerInvariant() -replace '[^\p{L}\p{N}]', '')
+                            foreach ($propertyName in $propertyAliases.Keys) {
+                                if ($normalizedHeader -in $propertyAliases[$propertyName]) {
+                                    $headerIndexes[$propertyName] = $index
+                                    break
+                                }
+                            }
+                        }
+                        $script:ShellMetadataHeaderIndexes[$folderKey] = $headerIndexes
+                    }
+                    foreach ($propertyName in $headerIndexes.Keys) {
+                        $value = [string]$folder.GetDetailsOf($item, $headerIndexes[$propertyName])
+                        if (-not [string]::IsNullOrWhiteSpace($value)) {
+                            $shellValues[$propertyName] = $value.Trim()
+                        }
+                    }
+
+                    $author = if ($shellValues.Author) { $shellValues.Author } else { $folder.GetDetailsOf($item, 20) }
+                    $title  = if ($shellValues.Title) { $shellValues.Title } else { $folder.GetDetailsOf($item, 21) }
                     if ($author) { $result.Author = [string]$author.Trim() }
                     if ($title)  { $result.Title  = [string]$title.Trim() }
 
                     # Audio extended tags
-                    $artist = $folder.GetDetailsOf($item, 13)
-                    $album  = $folder.GetDetailsOf($item, 14)
-                    $year   = $folder.GetDetailsOf($item, 15)
+                    $artist = if ($shellValues.Artist) { $shellValues.Artist } else { $folder.GetDetailsOf($item, 13) }
+                    $album  = if ($shellValues.Album) { $shellValues.Album } else { $folder.GetDetailsOf($item, 14) }
+                    $year   = if ($shellValues.Year) { $shellValues.Year } else { $folder.GetDetailsOf($item, 15) }
                     if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
                     if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
                     if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
