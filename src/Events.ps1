@@ -426,7 +426,12 @@ $ProfileDelete.Add_Click({
 if ($CustomRulesGrid) {
     function RefreshCustomRulesGrid {
         $CustomRulesGrid.ItemsSource = $null
-        $CustomRulesGrid.ItemsSource = @($script:CustomTypeRules)
+        $safeRules = if ($script:CustomTypeRules -and $script:CustomTypeRules.Count -gt 0) {
+            @($script:CustomTypeRules | Where-Object { $null -ne $_ })
+        } else {
+            @()
+        }
+        $CustomRulesGrid.ItemsSource = $safeRules
     }
 
     RefreshCustomRulesGrid

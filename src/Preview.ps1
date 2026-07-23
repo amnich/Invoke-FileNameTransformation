@@ -117,6 +117,7 @@ function Get-FNTApplicableMetadataFields($Files) {
 }
 
 function UpdateFieldPreviews {
+    if ($null -eq $FieldGrid -or $null -eq $FieldGrid.ItemsSource) { return }
     $patternItems = @($script:CurrentPattern.Items)
     if (-not $script:CurrentPattern -or $patternItems.Count -eq 0) {
         foreach ($field in $script:Fields) { $field.Preview = '' }
@@ -446,11 +447,11 @@ function FullBuildPreview {
 
 function RefreshPreviewGrid {
     $filter = [string]$PreviewFilter.SelectedItem.Content
-    $data = switch ($filter) {
+    $data = @(switch ($filter) {
         (T 'Cbo_Errors') { @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Error' }) }
         (T 'Cbo_Ready') { @($script:PreviewRows | Where-Object { $_.StatusCode -eq 'Ready' }) }
         default { @($script:PreviewRows) }
-    }
+    })
     $PreviewGrid.ItemsSource = $null
     $PreviewGrid.ItemsSource = $data
 

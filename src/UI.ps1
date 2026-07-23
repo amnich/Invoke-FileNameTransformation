@@ -1,4 +1,4 @@
-﻿# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
+# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
 # Dot-sourced by the main script; operates in $script: scope.
 
 #region Utility Functions
@@ -406,12 +406,21 @@ function Set-WPFWindowTheme {
     $brushConverter = New-Object System.Windows.Media.BrushConverter
     $selectedPalette = $palettes[$Theme]
     foreach ($key in $selectedPalette.Keys) {
-        $hex = $selectedPalette[$key]
-        $brush = [System.Windows.Media.Brush]($brushConverter.ConvertFromString($hex))
-        if ($null -ne $brush) {
-            if ($brush.CanFreeze) { $brush.Freeze() }
-            $Window.Resources[$key] = $brush
+        $strKey = [string]$key
+        if ([string]::IsNullOrWhiteSpace($strKey)) { continue }
+        $hex = $selectedPalette[$strKey]
+        try {
+            $brush = [System.Windows.Media.Brush]($brushConverter.ConvertFromString($hex))
+            if ($null -ne $brush) {
+                if ($brush.CanFreeze) { $brush.Freeze() }
+                # Use Contains/Remove/Add to avoid null-key conflicts with typed style keys
+                if ($Window.Resources.Contains($strKey)) {
+                    $Window.Resources.Remove($strKey)
+                }
+                $Window.Resources.Add($strKey, $brush)
+            }
         }
+        catch {}
     }
 }
 #endregion

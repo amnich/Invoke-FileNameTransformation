@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Launches the File Name Transformer WPF GUI application for bulk file renaming, structure transformation, and compliance auditing.
 
@@ -93,6 +93,27 @@ $script:Config = [pscustomobject][ordered]@{
     Theme           = 'Dark'
     CustomTypeRules = @()
 }
+
+# Load persisted config.json and restore Language + Theme preferences.
+try {
+    if (Test-Path -LiteralPath $script:ConfigPath -PathType Leaf) {
+        $savedJson = Get-Content -LiteralPath $script:ConfigPath -Raw -Encoding UTF8 | ConvertFrom-Json
+        if ($savedJson.Language -in @('PL', 'EN', 'DE')) {
+            $script:CurrentLanguage = $savedJson.Language
+        }
+        if ($savedJson.Theme -in @('Dark', 'Light')) {
+            $script:CurrentTheme = $savedJson.Theme
+        }
+        $script:Config = $savedJson
+        # CustomTypeRules are loaded later after $script:CustomTypeRules is initialized (below).
+    }
+}
+catch {
+    # Corrupt or missing config — proceed with defaults.
+    $script:CurrentLanguage = $null
+    $script:CurrentTheme = 'Dark'
+}
+
 $coreModulePath = Join-Path $script:ScriptRoot 'FileNameTransformation.Core.psm1'
 if (-not (Test-Path -LiteralPath $coreModulePath -PathType Leaf)) {
     throw "Missing core module: $coreModulePath"
@@ -293,6 +314,11 @@ $script:PreviewRows = New-Object 'System.Collections.ObjectModel.ObservableColle
 $script:MetadataCache = @{}
 $script:CurrentProfileName = ''
 $script:CurrentPattern = $null
+$script:CustomTypeRules = @()
+# Populate CustomTypeRules from loaded config (config was loaded early; state arrays are now ready).
+if ($script:Config.CustomTypeRules -and $script:Config.CustomTypeRules.Count -gt 0) {
+    $script:CustomTypeRules = @($script:Config.CustomTypeRules | Where-Object { $null -ne $_ })
+}
 #endregion
 
 #region Screen Size
@@ -503,6 +529,7 @@ if ($LanguageSelector) {
             if ($LanguageSelector.SelectedItem) {
                 $tag = $LanguageSelector.SelectedItem.Tag
                 if ($tag -and $tag -ne $script:CurrentLanguage) {
+                    $script:CurrentLanguage = $tag
                     $script:Config = Set-FNTConfigLanguage -Config $script:Config -Language $tag
                     $script:Config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $script:ConfigPath -Encoding UTF8
                     [Windows.MessageBox]::Show((T 'Msg_ConfirmRestart'), (T 'Title_Info'), 'OK', 'Information') | Out-Null
