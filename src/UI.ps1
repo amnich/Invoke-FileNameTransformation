@@ -164,7 +164,20 @@ function TokenTypeLabel([string]$typeId) {
         'Guid' { return (T 'Type_Guid') }
         'Version' { return (T 'Type_Version') }
         'Ambiguous' { return (T 'Type_Ambiguous') }
-        default { return (T 'Type_Text') }
+        default {
+            if ($typeId -like 'Custom:*') {
+                $ruleId = $typeId.Substring('Custom:'.Length)
+                $rule = @($script:CustomTypeRules | Where-Object { [string]$_.Id -eq $ruleId })[0]
+                if ($rule) {
+                    if ($rule.PSObject.Properties['DisplayName'] -and -not [string]::IsNullOrWhiteSpace([string]$rule.DisplayName)) {
+                        return [string]$rule.DisplayName
+                    }
+                    return [string]$rule.Id
+                }
+                return $ruleId
+            }
+            return (T 'Type_Text')
+        }
     }
 }
 
