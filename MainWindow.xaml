@@ -527,6 +527,7 @@
                   <DataGrid.Columns>
                     <DataGridTextColumn Header="#"        Binding="{Binding DisplayIndex}" Width="30"/>
                     <DataGridTextColumn Header="{t:Col_Sample}" Binding="{Binding Sample}"       Width="*"/>
+                    <DataGridTextColumn Header="{t:Col_Preview}" Binding="{Binding Preview}"       Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Type}"      Binding="{Binding EffectiveType}" Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Status}" Binding="{Binding TypeStatus}" Width="*"/>
                     <DataGridTextColumn Header="{t:Col_Name}"    Binding="{Binding Name}"         Width="*"/>

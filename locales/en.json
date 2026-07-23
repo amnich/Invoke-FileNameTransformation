@@ -41,6 +41,7 @@
   "Col_Name": "Name",
   "Col_Role": "Role",
   "Col_Sample": "Sample",
+  "Col_Preview": "Preview",
   "Col_Source": "Source",
   "Col_SourceFile": "Source file",
   "Col_Status": "Status",

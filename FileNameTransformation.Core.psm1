@@ -1,6 +1,7 @@
-Set-StrictMode -Version 2.0
+﻿Set-StrictMode -Version 2.0
 
 $script:InvariantCulture = [Globalization.CultureInfo]::InvariantCulture
+$script:ShellMetadataHeaderIndexes = @{}
 $script:DateFormats = @(
     'yyyyMMdd',
     'yyyy-MM-dd', 'yyyy.MM.dd', 'yyyy_MM_dd',
@@ -1003,22 +1004,8 @@ function ConvertTo-FNTProfile {
 function Get-FNTFileMetadata {
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][string]$Path,
-        [string[]]$RequestedFields = $null,
-        [switch]$BypassCache
+        [Parameter(Mandatory)][string]$Path
     )
-
-    $itemInfo = $null
-    if (Test-Path -LiteralPath $Path -PathType Leaf) {
-        try {
-            $itemInfo = Get-Item -LiteralPath $Path -ErrorAction Stop
-            $cacheKey = "$Path|$($itemInfo.LastWriteTime.Ticks)|$($itemInfo.Length)"
-            if (-not $BypassCache -and $script:MetadataCache.ContainsKey($cacheKey)) {
-                return $script:MetadataCache[$cacheKey]
-            }
-        }
-        catch {}
-    }
 
     $result = [ordered]@{
         CreationDate    = $null
@@ -1053,69 +1040,55 @@ function Get-FNTFileMetadata {
             $result.LastModified = $fi.LastWriteTime
             $result.LastModifiedStr = $fi.LastWriteTime.ToString('yyyyMMdd')
 
-            # Calculate content hashes only if requested or if no requested list specified
-            $needHashMD5 = ($null -eq $RequestedFields) -or ($RequestedFields -contains 'HashMD5') -or ($RequestedFields -contains 'Hash_MD5')
-            $needHashSHA256 = ($null -eq $RequestedFields) -or ($RequestedFields -contains 'HashSHA256') -or ($RequestedFields -contains 'Hash_SHA256')
-
-            if ($needHashMD5 -or $needHashSHA256) {
-                try {
-                    $md5 = if ($needHashMD5) { [System.Security.Cryptography.MD5]::Create() } else { $null }
-                    $sha256 = if ($needHashSHA256) { [System.Security.Cryptography.SHA256]::Create() } else { $null }
-                    $stream = [System.IO.File]::OpenRead($Path)
-                    try {
-                        if ($md5) {
-                            $md5Bytes = $md5.ComputeHash($stream)
-                            $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
-                        }
-                        if ($sha256) {
-                            [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
-                            $shaBytes = $sha256.ComputeHash($stream)
-                            $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
-                        }
-                    }
-                    finally {
-                        $stream.Dispose()
-                        if ($md5) { $md5.Dispose() }
-                        if ($sha256) { $sha256.Dispose() }
-                    }
-                }
-                catch {}
-            }
-        }
-        catch {}
-
-        # Shell COM Extended Properties (Author, Title, Audio tags)
-        $needShell = ($null -eq $RequestedFields) -or ($RequestedFields -match 'Author|Title|Audio|MetaAuthor|MetaTitle|MetaAudio')
-        if ($needShell) {
+            # Calculate content hashes
             try {
-                if ($null -eq $script:ShellApplication) {
-                    $script:ShellApplication = New-Object -ComObject Shell.Application
+                $md5 = [System.Security.Cryptography.MD5]::Create()
+                $sha256 = [System.Security.Cryptography.SHA256]::Create()
+                $stream = [System.IO.File]::OpenRead($Path)
+                try {
+                    $md5Bytes = $md5.ComputeHash($stream)
+                    $result.HashMD5 = [BitConverter]::ToString($md5Bytes) -replace '-'
+                    [void]$stream.Seek(0, [System.IO.SeekOrigin]::Begin)
+                    $shaBytes = $sha256.ComputeHash($stream)
+                    $result.HashSHA256 = [BitConverter]::ToString($shaBytes) -replace '-'
                 }
-                $parent = Split-Path $Path -Parent
-                $leaf   = Split-Path $Path -Leaf
-                $folder = $script:ShellApplication.NameSpace($parent)
-                if ($folder) {
-                    $item = $folder.ParseName($leaf)
-                    if ($item) {
-                        $author = $folder.GetDetailsOf($item, 20)
-                        $title  = $folder.GetDetailsOf($item, 21)
-                        if ($author) { $result.Author = [string]$author.Trim() }
-                        if ($title)  { $result.Title  = [string]$title.Trim() }
-
-                        # Audio extended tags
-                        $artist = $folder.GetDetailsOf($item, 13)
-                        $album  = $folder.GetDetailsOf($item, 14)
-                        $year   = $folder.GetDetailsOf($item, 15)
-                        if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
-                        if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
-                        if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
-                        if ($album)  { $result.AudioAlbum  = [string]$album.Trim() }
-                        if ($year)   { $result.AudioYear   = [string]$year.Trim() }
-                    }
+                finally {
+                    $stream.Dispose()
+                    $md5.Dispose()
+                    $sha256.Dispose()
                 }
             }
             catch {}
         }
+        catch {}
+
+        # Shell COM Extended Properties (Author, Title, Audio tags)
+        try {
+            $shell = New-Object -ComObject Shell.Application
+            $parent = Split-Path $Path -Parent
+            $leaf   = Split-Path $Path -Leaf
+            $folder = $shell.NameSpace($parent)
+            if ($folder) {
+                $item = $folder.ParseName($leaf)
+                if ($item) {
+                    $author = $folder.GetDetailsOf($item, 20)
+                    $title  = $folder.GetDetailsOf($item, 21)
+                    if ($author) { $result.Author = [string]$author.Trim() }
+                    if ($title)  { $result.Title  = [string]$title.Trim() }
+
+                    # Audio extended tags
+                    $artist = $folder.GetDetailsOf($item, 13)
+                    $album  = $folder.GetDetailsOf($item, 14)
+                    $year   = $folder.GetDetailsOf($item, 15)
+                    if (-not $year) { $year = $folder.GetDetailsOf($item, 28) }
+                    if ($artist) { $result.AudioArtist = [string]$artist.Trim() }
+                    if ($title)  { $result.AudioTitle  = [string]$title.Trim() }
+                    if ($album)  { $result.AudioAlbum  = [string]$album.Trim() }
+                    if ($year)   { $result.AudioYear   = [string]$year.Trim() }
+                }
+            }
+        }
+        catch {}
 
         # Image EXIF & Dimension Metadata (.jpg, .jpeg, .png, .tiff)
         $ext = [System.IO.Path]::GetExtension($Path).ToLowerInvariant()
@@ -1174,6 +1147,10 @@ function Get-FNTFileMetadata {
                 }
             }
             catch {}
+        }
+
+        if (-not $result.Author -and $result.DocCreator) {
+            $result.Author = $result.DocCreator
         }
 
         if ($result.Author) {

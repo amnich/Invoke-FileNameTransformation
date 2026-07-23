@@ -223,6 +223,7 @@ $MappingUp.Add_Click({
             $MappingList.ItemsSource = $null
             $MappingList.ItemsSource = $script:Mappings
             $MappingList.SelectedIndex = $i - 1
+            UpdateOutputExample
         }
     })
 
@@ -235,6 +236,7 @@ $MappingDown.Add_Click({
             $MappingList.ItemsSource = $null
             $MappingList.ItemsSource = $script:Mappings
             $MappingList.SelectedIndex = $i + 1
+            UpdateOutputExample
         }
     })
 

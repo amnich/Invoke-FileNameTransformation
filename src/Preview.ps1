@@ -61,11 +61,110 @@ function RefreshFieldSelector {
     }
 }
 
+function Get-FNTCachedFileMetadata([string]$Path) {
+    $file = Get-Item -LiteralPath $Path -ErrorAction Stop
+    $cacheKey = "$($file.FullName)|$($file.Length)|$($file.LastWriteTimeUtc.Ticks)"
+    if ($script:MetadataCache.ContainsKey($cacheKey)) {
+        return $script:MetadataCache[$cacheKey]
+    }
+
+    $metadata = Get-FNTFileMetadata -Path $file.FullName
+    $script:MetadataCache[$cacheKey] = $metadata
+    return $metadata
+}
+
+function Add-FNTMetadataValues([hashtable]$Values, $Metadata) {
+    $Values[(T 'Name_MetaDate')] = if ($Metadata.CreationDateStr) { $Metadata.CreationDateStr } else { '' }
+    $Values[(T 'Name_MetaAuthor')] = if ($Metadata.AuthorSegment) { $Metadata.AuthorSegment } elseif ($Metadata.Author) { $Metadata.Author } else { '' }
+    $Values[(T 'Name_MetaTitle')] = if ($Metadata.Title) { $Metadata.Title } else { '' }
+    $Values[(T 'Name_MetaDateTaken')] = if ($Metadata.DateTakenStr) { $Metadata.DateTakenStr } else { '' }
+    $Values[(T 'Name_MetaDimensions')] = if ($Metadata.Dimensions) { $Metadata.Dimensions } else { '' }
+    $Values[(T 'Name_MetaCamera')] = if ($Metadata.Camera) { $Metadata.Camera } else { '' }
+    $Values[(T 'Name_MetaAudioArtist')] = if ($Metadata.AudioArtist) { $Metadata.AudioArtist } else { '' }
+    $Values[(T 'Name_MetaDocCreator')] = if ($Metadata.DocCreator) { $Metadata.DocCreator } else { '' }
+    $Values[(T 'Name_MetaHashMD5')] = if ($Metadata.HashMD5) { $Metadata.HashMD5 } else { '' }
+    $Values[(T 'Name_MetaHashSHA256')] = if ($Metadata.HashSHA256) { $Metadata.HashSHA256 } else { '' }
+}
+
+function Get-FNTApplicableMetadataFields($Files) {
+    $extensions = @($Files | ForEach-Object { $_.Extension.ToLowerInvariant() } | Select-Object -Unique)
+    $names = [System.Collections.Generic.List[string]]::new()
+    $names.Add((T 'Name_MetaDate'))
+    $names.Add((T 'Name_MetaHashMD5'))
+    $names.Add((T 'Name_MetaHashSHA256'))
+
+    $documentExtensions = @('.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.pdf', '.rtf', '.odt', '.ods', '.odp')
+    $imageExtensions = @('.jpg', '.jpeg', '.png', '.tif', '.tiff')
+    $audioExtensions = @('.mp3', '.flac', '.m4a', '.wav', '.wma', '.aac', '.ogg')
+
+    if (@($extensions | Where-Object { $_ -in $documentExtensions + $imageExtensions + $audioExtensions }).Count -gt 0) {
+        $names.Add((T 'Name_MetaAuthor'))
+        $names.Add((T 'Name_MetaTitle'))
+    }
+    if (@($extensions | Where-Object { $_ -in $imageExtensions }).Count -gt 0) {
+        $names.Add((T 'Name_MetaDateTaken'))
+        $names.Add((T 'Name_MetaDimensions'))
+        $names.Add((T 'Name_MetaCamera'))
+    }
+    if (@($extensions | Where-Object { $_ -in $audioExtensions }).Count -gt 0) {
+        $names.Add((T 'Name_MetaAudioArtist'))
+    }
+    if (@($extensions | Where-Object { $_ -in @('.docx', '.xlsx', '.pptx') }).Count -gt 0) {
+        $names.Add((T 'Name_MetaDocCreator'))
+    }
+
+    return @($names | Select-Object -Unique)
+}
+
+function UpdateFieldPreviews {
+    $patternItems = @($script:CurrentPattern.Items)
+    if (-not $script:CurrentPattern -or $patternItems.Count -eq 0) {
+        foreach ($field in $script:Fields) { $field.Preview = '' }
+        [void]$FieldGrid.Items.Refresh()
+        return
+    }
+
+    try {
+        $item = $patternItems[0]
+        $values = @{}
+        foreach ($field in $script:Fields) {
+            if (-not $field.IsVirtual -and $field.PartIndex -ge 0) {
+                $values[$field.Name] = [string]$item.Parts[$field.PartIndex].Value
+            }
+        }
+
+        Add-FNTMetadataValues -Values $values -Metadata (Get-FNTCachedFileMetadata -Path $item.File.FullName)
+
+        foreach ($mapping in $script:Mappings) {
+            if (-not (Test-Path $mapping.Path)) { continue }
+            $data = Read-FNTDictionaryData -path $mapping.Path -delimiter $mapping.Delimiter
+            $inputValue = [string]$values[$mapping.InputField]
+            $match = $data | Where-Object {
+                ([string]$_.($mapping.KeyColumn)).Trim() -eq $inputValue
+            } | Select-Object -First 1
+            $values[$mapping.OutputField] = if ($match) { ([string]$match.($mapping.ValueColumn)).Trim() } else { '' }
+        }
+
+        foreach ($field in $script:Fields) {
+            $value = if ($values.ContainsKey($field.Name)) { [string]$values[$field.Name] } else { '' }
+            if ($field.Transforms -and $field.Transforms.Count -gt 0) {
+                $value = ApplyTransforms $value $field.Transforms
+            }
+            $field.Preview = $value
+        }
+    }
+    catch {
+        foreach ($field in $script:Fields) { $field.Preview = '' }
+    }
+    [void]$FieldGrid.Items.Refresh()
+}
+
 <#
 .SYNOPSIS
     Updates the live sample output string box in Tab 4 using the first file in the active pattern group.
 #>
 function UpdateOutputExample {
+    UpdateFieldPreviews
     if (-not $script:OutputParts.Count) {
         $OutputExample.Text = (T 'Hint_AddElements')
         return
@@ -89,8 +188,7 @@ function UpdateOutputExample {
                     $values[$f.Name] = $item.Parts[$f.PartIndex].Value
                 }
             }
-            $reqFields = @($script:OutputParts | ForEach-Object { $_.Value })
-            $meta = Get-FNTFileMetadata -Path $item.File.FullName -RequestedFields $reqFields
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName
             $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
             $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
@@ -238,7 +336,7 @@ function FullBuildPreview {
                     }
                 }
             }
-            $meta = Get-FNTFileMetadata -Path $item.File.FullName -RequestedFields $reqFields
+            $meta = Get-FNTFileMetadata -Path $item.File.FullName
             $values[(T 'Name_MetaDate')]       = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
             $values[(T 'Name_MetaAuthor')]     = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
             $values[(T 'Name_MetaTitle')]      = if ($meta.Title) { $meta.Title } else { '' }
