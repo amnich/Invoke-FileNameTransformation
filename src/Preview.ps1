@@ -61,11 +61,65 @@ function RefreshFieldSelector {
     }
 }
 
+function UpdateFieldPreviews {
+    $patternItems = @($script:CurrentPattern.Items)
+    if (-not $script:CurrentPattern -or $patternItems.Count -eq 0) {
+        foreach ($field in $script:Fields) { $field.Preview = '' }
+        [void]$FieldGrid.Items.Refresh()
+        return
+    }
+
+    try {
+        $item = $patternItems[0]
+        $values = @{}
+        foreach ($field in $script:Fields) {
+            if (-not $field.IsVirtual -and $field.PartIndex -ge 0) {
+                $values[$field.Name] = [string]$item.Parts[$field.PartIndex].Value
+            }
+        }
+
+        $meta = Get-FNTFileMetadata -Path $item.File.FullName
+        $values[(T 'Name_MetaDate')] = if ($meta.CreationDateStr) { $meta.CreationDateStr } else { '' }
+        $values[(T 'Name_MetaAuthor')] = if ($meta.AuthorSegment) { $meta.AuthorSegment } elseif ($meta.Author) { $meta.Author } else { '' }
+        $values[(T 'Name_MetaTitle')] = if ($meta.Title) { $meta.Title } else { '' }
+        $values[(T 'Name_MetaDateTaken')] = if ($meta.DateTakenStr) { $meta.DateTakenStr } else { '' }
+        $values[(T 'Name_MetaDimensions')] = if ($meta.Dimensions) { $meta.Dimensions } else { '' }
+        $values[(T 'Name_MetaCamera')] = if ($meta.Camera) { $meta.Camera } else { '' }
+        $values[(T 'Name_MetaAudioArtist')] = if ($meta.AudioArtist) { $meta.AudioArtist } else { '' }
+        $values[(T 'Name_MetaDocCreator')] = if ($meta.DocCreator) { $meta.DocCreator } else { '' }
+        $values[(T 'Name_MetaHashMD5')] = if ($meta.HashMD5) { $meta.HashMD5 } else { '' }
+        $values[(T 'Name_MetaHashSHA256')] = if ($meta.HashSHA256) { $meta.HashSHA256 } else { '' }
+
+        foreach ($mapping in $script:Mappings) {
+            if (-not (Test-Path $mapping.Path)) { continue }
+            $data = Read-FNTDictionaryData -path $mapping.Path -delimiter $mapping.Delimiter
+            $inputValue = [string]$values[$mapping.InputField]
+            $match = $data | Where-Object {
+                ([string]$_.($mapping.KeyColumn)).Trim() -eq $inputValue
+            } | Select-Object -First 1
+            $values[$mapping.OutputField] = if ($match) { ([string]$match.($mapping.ValueColumn)).Trim() } else { '' }
+        }
+
+        foreach ($field in $script:Fields) {
+            $value = if ($values.ContainsKey($field.Name)) { [string]$values[$field.Name] } else { '' }
+            if ($field.Transforms -and $field.Transforms.Count -gt 0) {
+                $value = ApplyTransforms $value $field.Transforms
+            }
+            $field.Preview = $value
+        }
+    }
+    catch {
+        foreach ($field in $script:Fields) { $field.Preview = '' }
+    }
+    [void]$FieldGrid.Items.Refresh()
+}
+
 <#
 .SYNOPSIS
     Updates the live sample output string box in Tab 4 using the first file in the active pattern group.
 #>
 function UpdateOutputExample {
+    UpdateFieldPreviews
     if (-not $script:OutputParts.Count) {
         $OutputExample.Text = (T 'Hint_AddElements')
         return

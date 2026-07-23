@@ -1,4 +1,4 @@
-Set-StrictMode -Version 2.0
+﻿Set-StrictMode -Version 2.0
 
 $script:InvariantCulture = [Globalization.CultureInfo]::InvariantCulture
 $script:DateFormats = @(
@@ -1123,6 +1123,10 @@ function Get-FNTFileMetadata {
                 }
             }
             catch {}
+        }
+
+        if (-not $result.Author -and $result.DocCreator) {
+            $result.Author = $result.DocCreator
         }
 
         if ($result.Author) {

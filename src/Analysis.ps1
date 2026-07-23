@@ -1,4 +1,4 @@
-# Analysis.ps1 — Tokenization, pattern analysis, and field detection.
+﻿# Analysis.ps1 — Tokenization, pattern analysis, and field detection.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#
@@ -176,6 +176,7 @@ function SetPattern($pattern) {
                 PartIndex        = $i
                 DisplayIndex     = "$($script:Fields.Count + 1)"
                 Sample           = $parts[$i].Value
+                Preview          = $parts[$i].Value
                 DetectedType     = $type
                 DetectedTypeId   = $typeId
                 CandidateTypes   = @($inference.CandidateTypes)
@@ -197,8 +198,7 @@ function SetPattern($pattern) {
     foreach ($m in $script:Mappings) {
         EnsureVirtualField $m.OutputField
     }
-    EnsureVirtualField (T 'Name_MetaDate')
-    EnsureVirtualField (T 'Name_MetaAuthor')
+    InjectMetadataVirtualFields
 
     $FieldGrid.ItemsSource = $script:Fields
     RefreshFieldSelector

@@ -98,6 +98,7 @@ function EnsureVirtualField([string]$name) {
                 PartIndex    = -1
                 DisplayIndex = 'V'
                 Sample       = (T 'Val_Mapping')
+                Preview      = ''
                 DetectedType = (T 'Src_Mapping')
                 Name         = $name
                 Role         = (T 'Role_Value')
