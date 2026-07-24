@@ -84,7 +84,7 @@ try {
         }
 
         # Runtime dependencies are embedded into the temporary script before ps2exe compiles it.
-        $isolatedHostPattern = '(?ms)^\[CmdletBinding\(\)\]\nparam\(\s*\[switch\]\$IsolatedHost\s*\)\n\nif \(-not \$IsolatedHost\) \{.*?^\}\n\n(?=\$ErrorActionPreference)'
+        $isolatedHostPattern = '(?ms)\[CmdletBinding\(\)\]\s*param\(.*?^\).*?if \(-not \$IsolatedHost -and -not \$NonInteractive\) \{.*?\}\s*(?=\$ErrorActionPreference)'
         if ($sourceContent -notmatch $isolatedHostPattern) {
                 throw 'Could not find the isolated-host launcher in the application script.'
         }
