@@ -943,6 +943,9 @@ function ConvertTo-FNTProfile {
     if (-not $normalized.PSObject.Properties['NewExtension']) {
         $normalized | Add-Member -NotePropertyName NewExtension -NotePropertyValue ''
     }
+    if (-not $normalized.PSObject.Properties['FolderPattern']) {
+        $normalized | Add-Member -NotePropertyName FolderPattern -NotePropertyValue ''
+    }
 
     foreach ($field in @($normalized.Fields)) {
         if (-not $field.PSObject.Properties['Transforms']) {

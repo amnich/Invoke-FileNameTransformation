@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Nachricht",
   "Line": "Linia",
   "Log": "Log",
@@ -414,5 +414,10 @@
   "ToolTip_UndoLast": "Letzte Verschiebe- oder Kopieroperation anhand des Manifests rückgängig machen",
   "Status_UndoDone": "Rückgängig abgeschlossen. Wiederhergestellt:",
   "Status_UndoErr": "Rückgängig mit Fehlern abgeschlossen.",
+  "Txt_FolderPattern": "Ordner-Muster (Regex)",
+  "Hint_FolderPattern": "Wenn ein Ordner geladen wird, wird dieses Profil automatisch angeboten, wenn ein Dateiname dem Muster entspricht.",
+  "Tip_FolderPattern": "Leer lassen, um die automatische Erkennung zu deaktivieren.",
+  "Txt_AutoProfileHint": "Passendes Profil: {0} — laden?",
+  "Btn_AutoApply": "Profil laden",
   "WinTitle": "Dateinamen-Transformator"
 }

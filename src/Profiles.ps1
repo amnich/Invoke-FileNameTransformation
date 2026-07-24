@@ -1,4 +1,4 @@
-﻿# Profiles.ps1 — Saving, loading, and refreshing JSON profiles.
+# Profiles.ps1 — Saving, loading, and refreshing JSON profiles.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#
@@ -40,6 +40,7 @@ function SaveProfile {
         OutputParts   = @($script:OutputParts)
         KeepExtension = [bool]$KeepExtension.IsChecked
         NewExtension  = $NewExtension.Text
+        FolderPattern = if ($FolderPattern) { $FolderPattern.Text } else { '' }
     }
     $obj = ConvertTo-FNTProfile ([pscustomobject]$obj)
 
@@ -123,6 +124,9 @@ function LoadProfile([string]$path) {
     if ($p.PSObject.Properties['TokenRegex'] -and -not [string]::IsNullOrWhiteSpace([string]$p.TokenRegex)) {
         $TokenRegex.Text = [string]$p.TokenRegex
     }
+    if ($FolderPattern) {
+        $FolderPattern.Text = if ($p.PSObject.Properties['FolderPattern'] -and $p.FolderPattern) { [string]$p.FolderPattern } else { '' }
+    }
 
     # Refresh UI bindings
     $FieldGrid.ItemsSource = $script:Fields
@@ -134,4 +138,37 @@ function LoadProfile([string]$path) {
     $script:CurrentProfileName = $p.Name
     $CurrentProfile.Text = $p.Name
     SetStatus "$(T 'Status_ProfLoaded') $($p.Name)"
+}
+
+<#
+.SYNOPSIS
+    Scans profile root for profiles with FolderPattern regex matching files in the specified folder.
+
+.PARAMETER folderPath
+    Source folder path to check files from.
+
+.OUTPUTS
+    [PSCustomObject] Profile item object with Name and Path or null if no match found.
+#>
+function Find-MatchingProfile([string]$folderPath) {
+    if (-not (Test-Path -LiteralPath $folderPath -PathType Container)) { return $null }
+    $files = @(Get-ChildItem -LiteralPath $folderPath -File -ErrorAction SilentlyContinue |
+               Select-Object -First 20 | ForEach-Object { $_.BaseName })
+    if ($files.Count -eq 0) { return $null }
+
+    $profileFiles = @(Get-ChildItem $script:ProfileRoot -Filter '*.json' -ErrorAction SilentlyContinue)
+    foreach ($file in $profileFiles) {
+        try {
+            $raw = Get-Content -LiteralPath $file.FullName -Raw -Encoding UTF8 | ConvertFrom-Json
+            $pat = if ($raw.PSObject.Properties['FolderPattern']) { [string]$raw.FolderPattern } else { '' }
+            if ([string]::IsNullOrWhiteSpace($pat)) { continue }
+            foreach ($name in $files) {
+                if ($name -match $pat) {
+                    return [pscustomobject]@{ Name = $file.BaseName; Path = $file.FullName }
+                }
+            }
+        }
+        catch {}
+    }
+    return $null
 }

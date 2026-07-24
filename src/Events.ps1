@@ -1,4 +1,4 @@
-﻿# Events.ps1 — Wiring up all WPF event handlers.
+# Events.ps1 — Wiring up all WPF event handlers.
 # Dot-sourced by the main script after XAML controls are bound.
 
 # --- Folder browse ---
@@ -11,8 +11,45 @@ $BrowseDestination.Add_Click({
         if ($p) { $DestinationPath.Text = $p }
     })
 
-# --- Folder path suggestions ---
-$SourcePath.Add_TextChanged({ Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
+# --- Folder path suggestions & Auto profile matching ---
+$SourcePath.Add_TextChanged({
+        Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList
+        $folder = $SourcePath.Text.Trim()
+        if ($AutoProfileHint -and $AutoProfileApply -and
+            -not [string]::IsNullOrWhiteSpace($folder) -and
+            (Test-Path -LiteralPath $folder -PathType Container)) {
+            $matched = Find-MatchingProfile $folder
+            if ($matched) {
+                $msgFormat = T 'Txt_AutoProfileHint'
+                $AutoProfileHint.Text = ($msgFormat -f $matched.Name)
+                $AutoProfileHint.Visibility  = 'Visible'
+                $AutoProfileApply.Visibility = 'Visible'
+                $script:AutoMatchedProfilePath = $matched.Path
+            } else {
+                $AutoProfileHint.Visibility  = 'Collapsed'
+                $AutoProfileApply.Visibility = 'Collapsed'
+                $script:AutoMatchedProfilePath = $null
+            }
+        }
+        elseif ($AutoProfileHint -and $AutoProfileApply) {
+            $AutoProfileHint.Visibility  = 'Collapsed'
+            $AutoProfileApply.Visibility = 'Collapsed'
+            $script:AutoMatchedProfilePath = $null
+        }
+    })
+
+if ($AutoProfileApply) {
+    $AutoProfileApply.Add_Click({
+            if ($script:AutoMatchedProfilePath) {
+                try {
+                    LoadProfile $script:AutoMatchedProfilePath
+                    $AutoProfileHint.Visibility  = 'Collapsed'
+                    $AutoProfileApply.Visibility = 'Collapsed'
+                }
+                catch { ErrorBox (T 'Err_LoadProfile') $_ }
+            }
+        })
+}
 $DestinationPath.Add_TextChanged({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })
 $SourcePath.Add_GotKeyboardFocus({ Update-PathSuggestions $SourcePath $SourcePathSuggestions $SourcePathSuggestionList })
 $DestinationPath.Add_GotKeyboardFocus({ Update-PathSuggestions $DestinationPath $DestinationPathSuggestions $DestinationPathSuggestionList })

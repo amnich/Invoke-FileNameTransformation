@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     Launches the File Name Transformer WPF GUI application for bulk file renaming, structure transformation, and compliance auditing.
 
@@ -314,6 +314,7 @@ $script:PreviewRows = New-Object 'System.Collections.ObjectModel.ObservableColle
 $script:MetadataCache = @{}
 $script:CurrentProfileName = ''
 $script:CurrentPattern = $null
+$script:AutoMatchedProfilePath = $null
 $script:CustomTypeRules = @()
 # Populate CustomTypeRules from loaded config (config was loaded early; state arrays are now ready).
 if ($script:Config.CustomTypeRules -and $script:Config.CustomTypeRules.Count -gt 0) {

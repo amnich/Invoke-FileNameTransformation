@@ -344,6 +344,7 @@
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
           </Grid.RowDefinitions>
           <Label Grid.Row="0" Content="{t:Source_Folder}"/>
           <TextBox x:Name="SourcePath" Grid.Row="0" Grid.Column="1" ToolTip="{t:ToolTip_SourceFolder}"/>
@@ -369,6 +370,12 @@
           <CheckBox x:Name="PreserveFolderStructure" Grid.Row="3" Grid.Column="1"
                     Content="{t:Chk_PreserveStructure}" IsChecked="True" ToolTip="{t:ToolTip_PreserveStructure}"
                     Margin="4,2,4,4" VerticalAlignment="Center"/>
+          <TextBlock x:Name="AutoProfileHint" Grid.Row="4" Grid.Column="1"
+                     Foreground="{DynamicResource AccentColor}" FontWeight="SemiBold"
+                     Visibility="Collapsed" Margin="4,4,4,4" VerticalAlignment="Center"/>
+          <Button x:Name="AutoProfileApply" Grid.Row="4" Grid.Column="2"
+                  Content="{t:Btn_AutoApply}" Visibility="Collapsed"
+                  Style="{StaticResource AccentButton}"/>
         </Grid>
       </GroupBox>
 
@@ -444,6 +451,12 @@
                          Text="{t:Txt_ProfileHint}"/>
               <TextBlock Margin="0,18,0,0" FontWeight="SemiBold" Text="{t:Txt_ActiveProfile}"/>
               <TextBlock x:Name="CurrentProfile" Margin="0,4,0,0" Text="{t:Txt_Unsaved}"/>
+              <Separator Margin="0,16"/>
+              <TextBlock FontWeight="SemiBold" Text="{t:Txt_FolderPattern}"/>
+              <TextBlock Margin="0,4,0,4" TextWrapping="Wrap"
+                         Foreground="{DynamicResource TextSecondary}"
+                         Text="{t:Hint_FolderPattern}"/>
+              <TextBox x:Name="FolderPattern" FontFamily="Consolas" Width="400" HorizontalAlignment="Left" Margin="0,4,0,0" ToolTip="{t:Tip_FolderPattern}"/>
             </StackPanel>
           </Grid>
         </TabItem>

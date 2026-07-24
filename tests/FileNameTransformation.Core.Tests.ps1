@@ -413,6 +413,21 @@ Describe 'Profile compatibility' {
         $profile.Mappings[0].OutputField | Should -Be 'Customer'
         $profile.OutputParts[0].Value | Should -Be 'Customer'
     }
+
+    It 'preserves and normalizes FolderPattern in profile objects' {
+        $source = [pscustomobject]@{
+            Name          = 'FolderPattern Profile'
+            FolderPattern = '^\d{8}_'
+            Fields        = @()
+            Mappings      = @()
+            OutputParts   = @()
+        }
+        $profile = ConvertTo-FNTProfile $source
+        $profile.FolderPattern | Should -Be '^\d{8}_'
+
+        $empty = ConvertTo-FNTProfile ([pscustomobject]@{ Name = 'Empty' })
+        $empty.FolderPattern | Should -Be ''
+    }
 }
 
 Describe 'Test-FNTNamingConvention' {

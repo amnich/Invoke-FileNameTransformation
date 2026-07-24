@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Message",
   "Line": "Line",
   "Log": "Log",
@@ -414,5 +414,10 @@
   "ToolTip_UndoLast": "Revert the previous move or copy operation recorded in the undo manifest",
   "Status_UndoDone": "Undo completed. Reverted:",
   "Status_UndoErr": "Undo completed with errors.",
+  "Txt_FolderPattern": "Auto-load folder pattern (regex)",
+  "Hint_FolderPattern": "When a folder is loaded, this profile will be offered automatically if any filename matches this regex.",
+  "Tip_FolderPattern": "Leave blank to disable auto-matching for this profile.",
+  "Txt_AutoProfileHint": "Matched profile: {0} — load it?",
+  "Btn_AutoApply": "Apply Profile",
   "WinTitle": "File Name Transformer"
 }

@@ -1,4 +1,4 @@
-﻿{
+{
   "Message": "Komunikat",
   "Line": "Linia",
   "Log": "Log",
@@ -414,5 +414,10 @@
   "ToolTip_UndoLast": "Cofnij poprzednią operację przenoszenia lub kopiowania na podstawie manifestu cofania",
   "Status_UndoDone": "Cofanie zakończone. Przywrócono:",
   "Status_UndoErr": "Cofanie zakończone z błędami.",
+  "Txt_FolderPattern": "Wzorzec folderu (regex)",
+  "Hint_FolderPattern": "Gdy folder zostanie wczytany, ten profil zostanie zaproponowany automatycznie, jeśli nazwa pliku pasuje do wzorca.",
+  "Tip_FolderPattern": "Pozostaw puste, aby wyłączyć automatyczne dopasowanie.",
+  "Txt_AutoProfileHint": "Dopasowany profil: {0} — wczytać?",
+  "Btn_AutoApply": "Wczytaj profil",
   "WinTitle": "Transformacja Nazw Plików"
 }
