@@ -2,6 +2,8 @@
 
 This folder contains 20 sample files and two CSV mapping files for replaying a complete File Name Transformer workflow.
 
+![File Transformation and Mapping Demo](../Demo_FileTransformation.gif)
+
 ## Input and Expected Result
 
 The sample files use this input format:
@@ -75,7 +77,7 @@ Click **Apply Field** after configuring each field.
 | Key column | `EmployeeID` |
 | Value column | `DisplayName` |
 
-3. Click **Add**. `DisplayName` is added as a virtual field.
+1. Click **Add**. `DisplayName` is added as a virtual field.
 
 ### 5. Transform the mapped display name
 
@@ -87,7 +89,7 @@ Click **Apply Field** after configuring each field.
 if ($_ -match '^\s*([^,]+),\s*(.)') { "$($matches[1])$($matches[2])" } else { $_ }
 ```
 
-4. Click **Add**. For example, `Kowalski, Jan` becomes `KowalskiJ`.
+1. Click **Add**. For example, `Kowalski, Jan` becomes `KowalskiJ`.
 
 ### 6. Add the course mapping
 
@@ -103,7 +105,7 @@ if ($_ -match '^\s*([^,]+),\s*(.)') { "$($matches[1])$($matches[2])" } else { $_
 | Key column | `CourseID` |
 | Value column | `CourseName` |
 
-3. Click **Add**. `CourseName` is added as a virtual field.
+1. Click **Add**. `CourseName` is added as a virtual field.
 
 ### 7. Build the destination filename
 

@@ -126,6 +126,26 @@ To set up an interactive testing environment with sample files and pre-configure
 .\Setup-CustomTypeDemo.ps1
 ```
 
+### File Transformation and Mapping Demo
+
+The [File Transformation and Mapping Demo](Demo_FileTransformation/README.md) provides 20 sample PDF files and two CSV mappings. It demonstrates transforming filenames from:
+
+```text
+EmployeeID_yyyyMMdd_CourseID_Company.pdf
+```
+
+to:
+
+```text
+MM_yyyy_DisplayName_Company_CourseName.pdf
+```
+
+Set up the demo with:
+
+```powershell
+.\Setup-FileTransformationDemo.ps1
+```
+
 ---
 
 ## Running Unit Tests
