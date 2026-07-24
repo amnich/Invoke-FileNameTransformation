@@ -1,19 +1,18 @@
 # Invoke-FileNameTransformation
 
-`Invoke-FileNameTransformation` is an enterprise GUI-based PowerShell utility for advanced file renaming, structural transformation, and corporate naming compliance auditing. It helps users restructure filenames, enrich them with CSV/JSON/XML dictionary mappings, extract COM/EXIF file metadata, and preview all changes safely before copying or moving files.
+`Invoke-FileNameTransformation` is an enterprise GUI-based PowerShell utility for advanced file renaming and structural transformation. It helps users restructure filenames, enrich them with CSV/JSON/XML dictionary mappings, extract COM/EXIF file metadata, and preview all changes safely before copying or moving files.
 
 ---
 
 ## Key Features
 
-- **7-Tab WPF Graphical Interface**:
-  - **Tab 0: Naming Compliance Audit** (`Tab_Compliance`): Audit and automatically standardize filenames according to corporate conventions (`YYYYMMDD_XxxxxxxY_DocType_FreeText_v1.ext`), extract author and creation dates from COM file properties or EXIF metadata, and rename non-compliant files in place.
-  - **Tab 1: Saved Profiles** (`Tab_Profile`): Save, load, duplicate, and manage reusable transformation profile configurations (JSON Schema V2).
-  - **Tab 2: File Analysis** (`Tab_Analysis`): Group source files by token structure signature, adjust tokenizer regex patterns, and inspect sample filenames.
-  - **Tab 3: Fields & Mappings** (`Tab_Fields`): Configure detected fields, resolve ambiguous types, attach per-field transformation chains (substring, date formatting, regex replacement, PowerShell scripts, sequential counters, casing, padding, math), and define dictionary lookups (CSV, TXT, JSON, XML).
-  - **Tab 4: Destination Name Builder** (`Tab_DestName`): Interactively assemble target output filename templates using field tokens, virtual metadata fields (`File_Date`, `File_Author`, `Hash_MD5`, etc.), static text, and separators.
-  - **Tab 5: Preview & Execution** (`Tab_Preview`): Generate a full transformation preview grid, detect collision errors or invalid path characters, export audit logs to CSV, and execute copy or move operations with real-time progress tracking.
-  - **Tab 6: Custom Type Rules** (`Tab_CustomRules`): Define, edit, save, and live-test custom domain-specific regular expression recognition rules (e.g., department codes, invoice numbers, ticket IDs).
+- **WPF graphical interface**:
+  - **Saved Profiles** (`Tab_Profile`): Save, load, duplicate, and manage reusable transformation profile configurations (JSON Schema V2).
+  - **File Analysis** (`Tab_Analysis`): Group source files by token structure signature, adjust tokenizer regex patterns, and inspect sample filenames.
+  - **Fields & Mappings** (`Tab_Fields`): Configure detected fields, resolve ambiguous types, attach per-field transformation chains (substring, date formatting, regex replacement, PowerShell scripts, sequential counters, casing, padding, math), and define dictionary lookups (CSV, TXT, JSON, XML).
+  - **Destination Name Builder** (`Tab_DestName`): Interactively assemble target output filename templates using field tokens, virtual metadata fields (`File_Date`, `File_Author`, `Hash_MD5`, etc.), static text, and separators.
+  - **Preview & Execution** (`Tab_Preview`): Generate a full transformation preview grid, detect collision errors or invalid path characters, export audit logs to CSV, and execute copy or move operations with real-time progress tracking.
+  - **Custom Type Rules** (`Tab_CustomRules`): Define, edit, save, and live-test custom domain-specific regular expression recognition rules (e.g., department codes, invoice numbers, ticket IDs).
 - **Interactive Tooltips**: Built-in, localized hover tooltips (`{t:ToolTip_...}`) across all UI buttons, inputs, drop-downs, and data grids in Polish, English, and German.
 - **Typed Pattern Parsing**: Break incoming filenames into fields and automatically recognize text, integers, decimals, dates/times, GUIDs, versions, and configured custom types.
 - **Composite Values**: Keep structured values such as `2026-01-16` or a punctuated GUID together even when their punctuation matches a filename separator.
@@ -22,6 +21,16 @@
 - **Metadata Integration**: Extract creation dates, author names, document titles, camera details, EXIF date taken, audio artists, and MD5/SHA256 file hashes.
 - **Multi-language Interface**: Built-in support for Polish (PL), English (EN), and German (DE) with dynamic runtime switching.
 - **Single-Executable Compilation**: Package the entire application—including core module, WPF XAML layout, localization dictionaries, and helper scripts—into a standalone EXE via `ps2exe.ps1`.
+
+## Recent Updates
+
+- Added the File Transformation and Mapping demo with 20 sample PDF files, employee and course CSV mappings, a replay guide, and an animated walkthrough.
+- Added mapped field previews so users can see transformed values before building the destination filename.
+- Improved CSV mapping support for quoted headers and semicolon-delimited files generated by Windows PowerShell.
+- Fixed PowerShell Expression transformations in Windows PowerShell 5.1, including expressions that convert `Kowalski, Jan` to `KowalskiJ`.
+- Hardened preview path handling for trailing separators, spaces, extended Windows paths (`\\?\`), and files in subfolders.
+- Optimized large-folder scanning by validating names before metadata extraction and skipping hashes during lightweight scans.
+- Added extension-aware metadata fields and dynamic Shell property discovery with cached property indexes.
 
 ---
 
@@ -61,6 +70,7 @@ Get-Help .\Invoke-FileNameTransformation.ps1 -Full
 Get-Help .\FileNameTransformation.Core.psm1 -Full
 Get-Help .\ps2exe.ps1 -Full
 Get-Help .\Setup-CustomTypeDemo.ps1 -Full
+Get-Help .\Setup-FileTransformationDemo.ps1 -Full
 ```
 
 ---
@@ -78,11 +88,11 @@ To compile the application into a single self-contained executable:
 ```
 
 The packager embeds:
+
 - `FileNameTransformation.Core.psm1`
 - `MainWindow.xaml`
 - `locales/en.json`, `locales/pl.json`, `locales/de.json`
 - All helper scripts in `src/*.ps1` (`Analysis.ps1`, `Compliance.ps1`, `Events.ps1`, `Mappings.ps1`, `Preview.ps1`, `Profiles.ps1`, `Transforms.ps1`, `Translations.ps1`, `UI.ps1`)
-
 
 ---
 
@@ -136,7 +146,7 @@ Set up the demo with:
 
 ## Running Unit Tests
 
-Execute the automated Pester test suite for tokenization, pattern matching, type inference, profile normalization, and compliance validation:
+Execute the automated Pester test suite for tokenization, pattern matching, type inference, profile normalization, metadata, mappings, transformations, and preview-related behavior:
 
 ```powershell
 Invoke-Pester .\tests\FileNameTransformation.Core.Tests.ps1
@@ -146,4 +156,25 @@ Invoke-Pester .\tests\FileNameTransformation.Core.Tests.ps1
 
 ## License & Support
 
-Developed for enterprise PowerShell file automation workflows. Designed by AI Pair Programming in collaboration with the Google DeepMind team.
+Developed for enterprise PowerShell file automation workflows. Designed with AI Programming assistant.
+MIT License
+
+Copyright (c) 2026 Adam Mnich
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
