@@ -1,4 +1,4 @@
-# Profiles.ps1 — Saving, loading, and refreshing JSON profiles.
+﻿# Profiles.ps1 — Saving, loading, and refreshing JSON profiles.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#

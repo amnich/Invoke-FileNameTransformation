@@ -1,4 +1,4 @@
-# Mappings.ps1 — CSV mapping functions and the mapping dialog.
+﻿# Mappings.ps1 — CSV mapping functions and the mapping dialog.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#
@@ -67,7 +67,7 @@ function Get-FNTDictionaryHeaders([string]$path) {
         $headers = @()
         if ($headerLine) {
             $headers = @($headerLine -split [regex]::Escape($delimiter))
-            $headers = @($headers | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
+            $headers = @($headers | ForEach-Object { $_.Trim().Trim('"') } | Where-Object { $_ -ne '' })
         }
         return [pscustomobject]@{ Delimiter = $delimiter; Headers = $headers; Format = 'CSV' }
     }

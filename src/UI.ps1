@@ -1,4 +1,4 @@
-# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
+﻿# UI.ps1 — Utility functions, logging, dialogs, and field-type helpers.
 # Dot-sourced by the main script; operates in $script: scope.
 
 #region Utility Functions

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     Launches the File Name Transformer WPF GUI application for bulk file renaming, structure transformation, and compliance auditing.
 

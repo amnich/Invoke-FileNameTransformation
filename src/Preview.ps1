@@ -1,4 +1,4 @@
-# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
+﻿# Preview.ps1 — Output preview builder, grid refreshing, and execution logic.
 # Dot-sourced by the main script; operates in $script: scope.
 
 <#
@@ -46,6 +46,39 @@ function Read-FNTDictionaryData([string]$path, [string]$delimiter) {
     }
 
     return @(Import-Csv -LiteralPath $path -Delimiter $delimiter)
+}
+
+function Get-FNTRelativePath([string]$Path, [string]$Root) {
+    $normalizedPath = [string]$Path
+    $normalizedRoot = [string]$Root
+    if ($normalizedPath.StartsWith('\\?\UNC\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedPath = '\' + $normalizedPath.Substring(8)
+    }
+    elseif ($normalizedPath.StartsWith('\\?\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedPath = $normalizedPath.Substring(4)
+    }
+    if ($normalizedRoot.StartsWith('\\?\UNC\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedRoot = '\' + $normalizedRoot.Substring(8)
+    }
+    elseif ($normalizedRoot.StartsWith('\\?\', [System.StringComparison]::OrdinalIgnoreCase)) {
+        $normalizedRoot = $normalizedRoot.Substring(4)
+    }
+
+    $fullPath = [System.IO.Path]::GetFullPath($normalizedPath)
+    $fullRoot = [System.IO.Path]::GetFullPath($normalizedRoot).TrimEnd('\', '/')
+    $rootPrefix = $fullRoot + [System.IO.Path]::DirectorySeparatorChar
+
+    if ($fullPath.StartsWith($rootPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return $fullPath.Substring($rootPrefix.Length)
+    }
+    if ($fullPath.Equals($fullRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+        return ''
+    }
+
+    $rootUri = [System.Uri]::new('file:///' + $rootPrefix.Replace('\', '/'))
+    $pathUri = [System.Uri]::new('file:///' + $fullPath.Replace('\', '/'))
+    $relativeUri = $rootUri.MakeRelativeUri($pathUri).ToString()
+    return [System.Uri]::UnescapeDataString($relativeUri).Replace('/', '\')
 }
 
 <#
@@ -310,7 +343,7 @@ function FullBuildPreview {
     foreach ($item in $filesToProcess) {
         $row = [ordered]@{
             SourcePath          = $item.File.FullName
-            SourceRelative      = $item.File.FullName.Substring($src.TrimEnd('\').Length).TrimStart('\')
+            SourceRelative      = Get-FNTRelativePath -Path $item.File.FullName -Root $src
             DestinationPath     = ''
             DestinationRelative = ''
             StatusCode          = 'Ready'
@@ -398,7 +431,7 @@ function FullBuildPreview {
             }
             else {
                 $row.DestinationPath = $res.Path
-                $row.DestinationRelative = $row.DestinationPath.Substring($dst.TrimEnd('\').Length).TrimStart('\')
+                $row.DestinationRelative = Get-FNTRelativePath -Path $row.DestinationPath -Root $dst
                 $detailsList = ($values.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }) -join '; '
                 if ($res.Action -eq 'AutoNumber') {
                     $detailsList = "[AutoNumber] $detailsList"

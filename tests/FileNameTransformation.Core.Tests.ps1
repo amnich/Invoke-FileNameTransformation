@@ -506,6 +506,22 @@ Describe 'Get-FNTNormalizedAuthorSegment' {
     }
 }
 
+Describe 'Field transformations' {
+    BeforeAll {
+        function global:T([string]$Key) { $Key }
+        . (Join-Path $PSScriptRoot '..\src\Transforms.ps1')
+    }
+
+    It 'executes PowerShell expressions with the current value in Windows PowerShell' {
+        $transform = [pscustomobject]@{
+            Type       = 'Expression'
+            Expression = 'if ($_ -match ''^\s*([^,]+),\s*(.)'') { "$($matches[1])$($matches[2])" } else { $_ }'
+        }
+
+        ApplyTransforms 'Kowalski, Jan' @($transform) | Should -Be 'KowalskiJ'
+    }
+}
+
 Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
     BeforeAll {
         . (Join-Path $PSScriptRoot '..\src\Mappings.ps1')
@@ -553,6 +569,24 @@ Describe 'Phase 2: Extended Metadata & Dictionary Readers' {
         }
         finally {
             Remove-Item $jsonFile -ErrorAction SilentlyContinue
+        }
+    }
+
+    It 'removes CSV quoting from detected headers' {
+        $csvFile = [System.IO.Path]::GetTempFileName() + '.csv'
+        try {
+            Set-Content -LiteralPath $csvFile -Value '"EmployeeID";"DisplayName"' -Encoding UTF8
+            Add-Content -LiteralPath $csvFile -Value '"E1001";"Kowalski, Jan"' -Encoding UTF8
+
+            $headers = Get-FNTDictionaryHeaders $csvFile
+
+            $headers.Delimiter | Should -Be ';'
+            $headers.Headers | Should -Contain 'EmployeeID'
+            $headers.Headers | Should -Contain 'DisplayName'
+            $headers.Headers | Should -Not -Contain '"EmployeeID"'
+        }
+        finally {
+            Remove-Item $csvFile -ErrorAction SilentlyContinue
         }
     }
 

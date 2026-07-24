@@ -101,7 +101,9 @@ function ApplyTransforms([string]$value, $transforms) {
                 'Expression' {
                     if ($t.Expression) {
                         $sb = [scriptblock]::Create($t.Expression)
-                        $value = [string]($sb.InvokeWithContext($null, @([psvariable]::new('_', $value)), @($value)))
+                        $variables = New-Object 'System.Collections.Generic.List[System.Management.Automation.PSVariable]'
+                        $variables.Add([psvariable]::new('_', $value))
+                        $value = [string]($sb.InvokeWithContext($null, $variables, @($value)))
                     }
                 }
                 'Sequence' {

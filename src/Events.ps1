@@ -1,4 +1,4 @@
-# Events.ps1 — Wiring up all WPF event handlers.
+﻿# Events.ps1 — Wiring up all WPF event handlers.
 # Dot-sourced by the main script after XAML controls are bound.
 
 # --- Folder browse ---
