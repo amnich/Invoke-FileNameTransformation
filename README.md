@@ -83,20 +83,6 @@ The packager embeds:
 - `locales/en.json`, `locales/pl.json`, `locales/de.json`
 - All helper scripts in `src/*.ps1` (`Analysis.ps1`, `Compliance.ps1`, `Events.ps1`, `Mappings.ps1`, `Preview.ps1`, `Profiles.ps1`, `Transforms.ps1`, `Translations.ps1`, `UI.ps1`)
 
----
-
-## Corporate Naming Compliance Audit
-
-**Tab 0 (Compliance Audit)** implements automated auditing and fixing for enterprise naming conventions:
-
-- **Target Standard**: `YYYYMMDD_XxxxxxxY_DocType_FreeText_v1.ext`
-  - `YYYYMMDD`: 8-digit date string.
-  - `XxxxxxxY`: 8-character PascalCase author code starting and ending with uppercase letters.
-  - `DocType`: Document type classification keyword (e.g. `Raport`, `Umowa`, `Dokument`).
-  - `FreeText`: Sanitized description text without invalid characters.
-  - `v1`: Version tag (e.g. `v1`, `v2`, `v1.2`).
-- **Metadata Fallbacks**: Automatically pulls creation dates and author names from Shell COM properties (`System.Author`), EXIF metadata, or file system timestamps.
-- **In-Place Fixes**: Click **Fix Selected** (`Btn_FixSelected`) to safely rename non-compliant files in place directly within the source folder after review.
 
 ---
 
